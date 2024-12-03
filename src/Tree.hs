@@ -88,6 +88,7 @@ parse = fst . go [] Nothing
     go [] expr "" = (expr, "")
     go _ _ "" = (Nothing, "")
     go stack expr (c:cs)
+        | c == ';' = go stack expr (dropWhile (`notElem` "\n\r") cs)
         | c == '(' = go (expr:stack) Nothing cs
         | c == ')' =
             if null stack
