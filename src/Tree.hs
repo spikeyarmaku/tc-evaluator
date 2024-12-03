@@ -9,8 +9,8 @@ printTree :: Tree -> String
 printTree (Tree []) = "t"
 printTree (Tree ts) = "(t" ++ concatMap printTree ts ++ ")"
 
-printExpr :: Expr -> String
-printExpr = printTree . exprToTree
+printExprAsTree :: Expr -> String
+printExprAsTree = printTree . exprToTree
 
 treeToExpr :: Tree -> Expr
 treeToExpr (Tree cs) = foldl applyExpr (Prg Leaf) (map treeToExpr cs)
@@ -81,6 +81,22 @@ data Expr
     | Prg Program
     deriving (Show, Eq)
 
+printExpr :: Expr -> String
+printExpr = concatMap show . exprToComb
+
+printExprWithParens :: Bool -> Expr -> String
+printExprWithParens = go 2
+    where
+    go level tabbed (App a0 a1) =
+        let tabStr = if tabbed then replicate level ' ' else ""
+            newlineStr = if tabbed then "\n" else ""
+            level' = level + 2
+        in  "A" ++ newlineStr ++
+                tabStr ++ "(" ++ go level' tabbed a0 ++ ")" ++ newlineStr ++
+                tabStr ++ "(" ++ go level' tabbed a1 ++ ")" ++ newlineStr ++
+                tabStr
+    go _ _ e = concatMap show $ exprToComb e
+
 parse :: String -> Maybe Tree
 parse = fst . go [] Nothing
     where
@@ -142,7 +158,7 @@ printTest text =
     case parse text of
         Nothing -> True
         Just t0 ->
-            case parse (printExpr . treeToExpr $ t0) of
+            case parse (printExprAsTree . treeToExpr $ t0) of
                 Nothing -> False
-                Just t1 ->
-                    printExpr (treeToExpr t0) == printExpr (treeToExpr t1)
+                Just t1 -> printExprAsTree (treeToExpr t0) ==
+                            printExprAsTree (treeToExpr t1)
