@@ -3,14 +3,41 @@ module Tree where
 import Data.Char (isSpace)
 import Data.Word (Word8)
 
-newtype Tree = Tree [Tree] deriving (Show, Eq)
+newtype Tree = Tree [Tree] deriving (Eq)
 
-printTree :: Tree -> String
-printTree (Tree []) = "t"
-printTree (Tree ts) = "(t" ++ concatMap printTree ts ++ ")"
+instance Show Tree where
+    show (Tree []) = "t"
+    show (Tree ts) = "(t" ++ concatMap show ts ++ ")"
+
+-- TC expressions are not allowed as part of Programs, because in the memory
+-- structure, applications are parts of a tree that can change, and the rest of
+-- the tree should be immutable. If there was an App node where a program is
+-- expected, that App node would eventually change the whole subtree, as App
+-- nodes are where reductions happen.
+data Expr
+    = App Expr Expr
+    | Prg Program
+    deriving (Show, Eq)
+
+data Program
+    = Fork Program Program
+    | Stem Program
+    | Leaf
+    deriving (Show, Eq)
+
+data BinTree
+    = BinApp BinTree BinTree
+    | Node
+    deriving (Eq)
+
+instance Show BinTree where
+    show Node = "L"
+    show (BinApp t0 t1) = "A" ++ show t0 ++ show t1
+
+data Comb = L | S | F | A deriving (Show, Enum, Bounded, Eq)
 
 printExprAsTree :: Expr -> String
-printExprAsTree = printTree . exprToTree
+printExprAsTree = show . exprToTree
 
 treeToExpr :: Tree -> Expr
 treeToExpr (Tree cs) = foldl applyExpr (Prg Leaf) (map treeToExpr cs)
@@ -43,20 +70,25 @@ getProgram :: Expr -> Maybe Program
 getProgram (Prg prg) = Just prg
 getProgram _ = Nothing
 
-printComb :: Expr -> String
-printComb = concatMap show . exprToComb
+printAsComb :: Expr -> String
+printAsComb = concatMap show . exprToCombs
 
-exprToComb :: Expr -> [Comb]
-exprToComb (App e0 e1) = A : (exprToComb e0 ++ exprToComb e1)
-exprToComb (Prg Leaf) = [L]
-exprToComb (Prg (Stem p)) = S:exprToComb (Prg p)
-exprToComb (Prg (Fork p0 p1)) = F:(exprToComb (Prg p0) ++ exprToComb (Prg p1))
+exprToCombs :: Expr -> [Comb]
+exprToCombs (App e0 e1) = A : (exprToCombs e0 ++ exprToCombs e1)
+exprToCombs (Prg Leaf) = [L]
+exprToCombs (Prg (Stem p)) = S:exprToCombs (Prg p)
+exprToCombs (Prg (Fork p0 p1)) = F:(exprToCombs (Prg p0) ++ exprToCombs (Prg p1))
 
-data Comb = L | S | F | A deriving (Show, Enum, Bounded, Eq)
+combToByte :: Comb -> Word8
+combToByte = fromIntegral . fromEnum
 
+-- Converts the program parts of an expression into a continuous array of bytes
 exprToBytes :: Expr -> [Word8]
-exprToBytes expr =
-    let combs = exprToComb expr
+exprToBytes = map combToByte . exprToCombs
+
+exprToBytesCompressed :: Expr -> [Word8]
+exprToBytesCompressed expr =
+    let combs = exprToCombs expr
         go [] = []
         go cs =
             let byte = sum
@@ -65,24 +97,8 @@ exprToBytes expr =
             in  fromIntegral byte : go (drop 4 cs)
     in  go combs
 
-data Program
-    = Fork Program Program
-    | Stem Program
-    | Leaf
-    deriving (Show, Eq)
-
--- Expr's are not allowed as part of Programs, because in the memory structure,
--- applications are parts of a tree that can change, and the rest of the tree
--- should be immutable. If there was an A node where a program is expected, that
--- A node would eventually change the whole subtree, as A nodes are where
--- reductions happen.
-data Expr
-    = App Expr Expr
-    | Prg Program
-    deriving (Show, Eq)
-
 printExpr :: Expr -> String
-printExpr = concatMap show . exprToComb
+printExpr = concatMap show . exprToCombs
 
 printExprWithParens :: Bool -> Expr -> String
 printExprWithParens = go 2
@@ -95,7 +111,11 @@ printExprWithParens = go 2
                 tabStr ++ "(" ++ go level' tabbed a0 ++ ")" ++ newlineStr ++
                 tabStr ++ "(" ++ go level' tabbed a1 ++ ")" ++ newlineStr ++
                 tabStr
-    go _ _ e = concatMap show $ exprToComb e
+    go _ _ e = concatMap show $ exprToCombs e
+
+getBinTreeChildren :: BinTree -> [BinTree]
+getBinTreeChildren Node = []
+getBinTreeChildren (BinApp a0 a1) = getBinTreeChildren a0 ++ [a1]
 
 parse :: String -> Maybe Tree
 parse = fst . go [] Nothing
@@ -112,6 +132,12 @@ parse = fst . go [] Nothing
                 else go (tail stack) (apply (head stack) expr) cs
         | isSpace c = go stack expr cs
         | otherwise = go stack (apply expr (Just $ Tree [])) cs
+
+treeToBinTree :: Tree -> BinTree
+treeToBinTree (Tree []) = Node
+treeToBinTree (Tree cs) =
+    let newTree = Tree (init cs)
+    in  BinApp (treeToBinTree newTree) (treeToBinTree (last cs))
 
 apply :: Maybe Tree -> Maybe Tree -> Maybe Tree
 apply Nothing Nothing = Nothing
@@ -147,9 +173,9 @@ parseTest text =
     case parse text of
         Nothing -> True
         Just t0 ->
-            case parse (printTree t0) of
+            case parse (show t0) of
                 Nothing -> False
-                Just t1 -> printTree t0 == printTree t1
+                Just t1 -> show t0 == show t1
 
 -- Check if printing a parsed expr is the same as parsing and printing *that*
 -- text

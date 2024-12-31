@@ -1,4 +1,7 @@
 // TODO Things to optimize:
+// - agents don't need to be repositioned after deleting one. Instead, maintain
+//   a linked list of free spaces. (This means that the agent datatype can be
+//   simplified, as there is no need to maintain the reverse pointers anymore)
 // - agents dont always have to be freed, in many rules they can be
 //   repurposed, saving the cost of moving an agent.
 //   The rules where agents to be deleted: L-E, S-E, L-A, S-A, F-A, L-T, F-T
