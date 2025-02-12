@@ -3,14 +3,13 @@ module Main where
 import System.Environment (getArgs, getProgName)
 import System.IO (hGetContents, openFile, IOMode (..), hClose)
 import Control.Monad (unless)
-import Data.List (intercalate)
-import Data.Word (Word8)
 
 import Tree (parse, treeToExpr, printExprAsTree, Tree, Expr(..),
-    printExprWithParens, exprToBytes, treeToBinTree)
+    printExprWithParens, treeToBinTree, BinTree (Node, BinApp))
 import Eval (isNormal, step, eval)
 import Inet (compileInet)
 import Global (binTreeBase)
+import Data.List (intercalate)
 
 data Command = Interpret | Compile Backend | DisplayHelp deriving (Eq, Show)
 data Backend = InteractionNet | BinTree deriving (Eq, Show)
@@ -102,43 +101,56 @@ main = do
         Interpret -> withTree (inputFile config) treeToExpr interpret
         Compile InteractionNet -> withTree (inputFile config) treeToBinTree $
             compileInet (outputFile config)
-        Compile BinTree-> withTree (inputFile config) treeToExpr $
+        Compile BinTree -> withTree (inputFile config) treeToBinTree $
             compileBinTree (outputFile config)
 
 -- A ByteOffset is a pointer into the tree data, and an AppOffset is a pointer
 -- into the app stack
 data Offset = ByteOffset Int | AppOffset Int deriving (Show)
 
--- TODO
--- uint8_t tree[] = { ... };
--- void store() {store_app(tree, tree + 3); ...}
--- When there is an application, it is stored, then its right sub-apps, then its
--- left sub-apps. In this way, the last app is the first to be processed.
--- E.g. ALAFLLL -> [A0]L[A1]FLLL
-compileBinTree :: FilePath -> Expr -> IO ()
-compileBinTree outFile expr = do
-    let go :: Expr -> ([Word8], [(Offset, Offset)]) -> ([Word8], [(Offset, Offset)])
-        go (Prg p) (bytes, offsets) = (bytes ++ exprToBytes (Prg p), offsets)
-        go (App a0 a1) (bytes, offsets) =
-            let (bytes', offsets') = go a1 (bytes, offsets)
-                (bytes'', offsets'') = go a0 (bytes', offsets')
-                getOffset :: ([Word8], [(Offset, Offset)]) -> Expr -> Offset
-                getOffset (bs, _) (Prg _) = ByteOffset (length bs)
-                getOffset (_, os) (App _ _) = AppOffset (length os)
-                offset = (getOffset (bytes, offsets'') a0, getOffset (bytes', offsets'') a1)
-            in  (bytes'', offset : offsets'')
-        makeApp :: Int -> Int -> String -> String -> String
-        makeApp a b t0 t1 = intercalate ", " ["app(" ++ show a, show b, t0, t1 ++ ");\n"]
-        offsetToStr :: (Offset, Offset) -> String
-        offsetToStr (ByteOffset n, ByteOffset m) = makeApp n m "PRG" "PRG"
-        offsetToStr (ByteOffset n, AppOffset m) = makeApp n m "PRG" "APP"
-        offsetToStr (AppOffset n, ByteOffset m) = makeApp n m "APP" "PRG"
-        offsetToStr (AppOffset n, AppOffset m) = makeApp n m "APP" "APP"
-        (finalBytes, finalOffsets) = go expr ([], [])
-        resultArr = "uint8_t tree[] = {" ++ intercalate "," (map show finalBytes) ++ "};"
-        resultApp = "void init_program() {\n" ++ concatMap offsetToStr finalOffsets ++ "}"
+compileBinTree :: FilePath -> BinTree -> IO ()
+compileBinTree outFile binTree = do
+    let toStr Nothing = "NULL"
+        toStr (Just x) = "s" ++ show x
+        makeApp :: Maybe Int -> Maybe Int -> Maybe Int -> String
+        makeApp n left right =
+            "struct Node* " ++ toStr n ++ " = add_node(" ++ toStr left ++
+            ", " ++ toStr right ++ ");"
+        -- Return the last variable number used and thecode generated so far
+        compile :: Int -> BinTree -> Maybe (Int, [String])
+        compile _ Node = Nothing
+        compile n (BinApp left right) =
+            case compile n left of
+                Nothing ->
+                    case compile n right of
+                        Nothing -> Just (n, [makeApp (Just n) Nothing Nothing])
+                        Just (nRight, codeRight) ->
+                            Just (nRight + 1,
+                                codeRight ++ [makeApp (Just $ nRight + 1)
+                                    Nothing (Just nRight)])
+                Just (nLeft, codeLeft) ->
+                    case compile (nLeft + 1) right of
+                        Nothing ->
+                            Just (nLeft + 1,
+                                codeLeft ++ [makeApp (Just $ nLeft + 1)
+                                    (Just nLeft) Nothing])
+                        Just (nRight, codeRight) ->
+                            Just (nRight + 1,
+                                    codeLeft ++ codeRight ++
+                                    [makeApp (Just $ nRight + 1)
+                                        (Just nLeft) (Just nRight)])
+        indent :: Int -> String -> String
+        indent n str = replicate n ' ' ++ str
+        toCode t =
+            case compile 0 t of
+                Nothing -> indent 4 "return NULL;"
+                Just (n, code) ->
+                    intercalate "\n" $ map (indent 4) $
+                        code ++ ["return " ++ toStr (Just n) ++ ";"]
+        resultApp =
+            "struct Node* init_program() {\n" ++ toCode binTree ++ "\n}"
     baseStr <- readFile binTreeBase
-    writeFile outFile $ baseStr ++ resultArr ++ "\n\n" ++ resultApp
+    writeFile outFile $ baseStr ++ resultApp
 
 {-
 [A,A,L,A,F,L,L,L,L]
