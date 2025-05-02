@@ -139,6 +139,12 @@ treeToBinTree (Tree cs) =
     let newTree = Tree (init cs)
     in  BinApp (treeToBinTree newTree) (treeToBinTree (last cs))
 
+binTreeToTree :: BinTree -> Tree
+binTreeToTree Node = Tree []
+binTreeToTree (BinApp t1 t2) =
+    let Tree children = binTreeToTree t1
+    in  Tree (children ++ [binTreeToTree t2])
+
 apply :: Maybe Tree -> Maybe Tree -> Maybe Tree
 apply Nothing Nothing = Nothing
 apply Nothing (Just t) = Just t

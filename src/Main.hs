@@ -1,15 +1,18 @@
 module Main where
 
 import System.Environment (getArgs, getProgName)
-import System.IO (hGetContents, openFile, IOMode (..), hClose)
-import Control.Monad (unless)
+import System.IO (hGetContents, openFile, IOMode (..), hClose, hSetBuffering, stdout, BufferMode (..))
+import Control.Monad (unless, forM_, when)
 
 import Tree (parse, treeToExpr, printExprAsTree, Tree, Expr(..),
-    printExprWithParens, treeToBinTree, BinTree (Node, BinApp))
-import Eval (isNormal, step, eval)
+    printExprWithParens, treeToBinTree, BinTree (Node, BinApp), binTreeToTree,
+    size, exprToTree)
+import Eval (isNormal, step, eval, evalWithRules, evalWithMainRulesN, Rule(..))
 import Inet (compileInet)
 import Global (binTreeBase)
-import Data.List (intercalate)
+import Data.List (intercalate, nub)
+import System.Exit (exitSuccess)
+import Data.Tuple (swap)
 
 data Command = Interpret | Compile Backend | DisplayHelp deriving (Eq, Show)
 data Backend = InteractionNet | BinTree deriving (Eq, Show)
@@ -91,6 +94,11 @@ withTree fp convert action = do
     hClose h
 
 main :: IO ()
+-- main = print $ showEvalPathString "t(t(ttt)tt)(t(tt)t(t(t(ttt)))tt)t"
+-- -- Invoke search, with the intent of redirecting the output into a file
+-- main = do
+--     hSetBuffering stdout LineBuffering
+--     search
 main = do
     getArgs >>= print
     getArgs >>= (print . parseFlags)
@@ -104,6 +112,54 @@ main = do
         Compile BinTree -> withTree (inputFile config) treeToBinTree $
             compileBinTree (outputFile config)
 
+showTree :: Int -> String
+showTree = show . binTreeToTree . nthTree
+
+showEvalPathNum :: Int -> String
+showEvalPathNum =
+    show . evalWithMainRulesN 20 . treeToExpr . binTreeToTree . nthTree
+
+showEvalPathString :: String -> Maybe String
+showEvalPathString =
+    fmap ( show . swap . fmap exprToTree . swap . evalWithMainRulesN 20
+         . treeToExpr )
+    . parse
+
+-- Find the smallest trees that require at least 3 reduction rules to evaluate.
+-- Smallest so far: tt(t(t(t(ttt)))(tt)(t(ttt))tt)t
+search :: IO ()
+search =
+    forM_ [1608000..] $ \i -> do
+        let tree = nthTree i
+        let rs = getRules tree
+            isOk = rs == nub rs
+        when (i `mod` 1000 == 0) $
+            putStrLn $ show i ++ " - " ++ show (size $ binTreeToTree tree)
+        -- putStrLn $ "Checking tree # " ++ show i ++ " - " ++
+        --     show (size $ binTreeToTree tree) ++ " - " ++ show rs
+        -- putStrLn $ "Checking tree #" ++ show i
+        when (isOk && length rs == 4) $ do
+            putStrLn $ "Found tree with 4 rules: # " ++ show i ++ " - " ++
+                show (size $ binTreeToTree tree) ++ " - " ++ show rs
+        when (isOk && length rs == 5) $ do
+            putStrLn $ "Found matching tree: # " ++ show i ++ " - " ++
+                show (size $ binTreeToTree tree) ++ " - " ++ show rs
+            exitSuccess
+
+getRules :: BinTree -> [Rule]
+getRules = snd . evalWithMainRulesN 7 . treeToExpr . binTreeToTree
+
+generateTree :: Int -> [BinTree]
+generateTree 0 = [Node]
+generateTree n =
+    [BinApp left right
+        | i <- [0 .. n - 1]
+        , left <- generateTree i
+        , right <- generateTree (n - 1 - i)]
+
+nthTree :: Int -> BinTree
+nthTree n = concatMap generateTree [0..] !! n
+
 -- A ByteOffset is a pointer into the tree data, and an AppOffset is a pointer
 -- into the app stack
 data Offset = ByteOffset Int | AppOffset Int deriving (Show)
@@ -114,8 +170,8 @@ compileBinTree outFile binTree = do
         toStr (Just x) = "s" ++ show x
         makeApp :: Maybe Int -> Maybe Int -> Maybe Int -> String
         makeApp n left right =
-            "struct Node* " ++ toStr n ++ " = add_node(" ++ toStr left ++
-            ", " ++ toStr right ++ ");"
+            "struct Node* " ++ toStr n ++ " = alloc_node(tree, " ++
+            toStr left ++ ", " ++ toStr right ++ ");"
         -- Return the last variable number used and thecode generated so far
         compile :: Int -> BinTree -> Maybe (Int, [String])
         compile _ Node = Nothing
@@ -148,23 +204,7 @@ compileBinTree outFile binTree = do
                     intercalate "\n" $ map (indent 4) $
                         code ++ ["return " ++ toStr (Just n) ++ ";"]
         resultApp =
-            "struct Node* init_program() {\n" ++ toCode binTree ++ "\n}"
+            "struct Node* init_program(struct Tree* tree) {\n" ++
+            toCode binTree ++ "\n}\n"
     baseStr <- readFile binTreeBase
     writeFile outFile $ baseStr ++ resultApp
-
-{-
-[A,A,L,A,F,L,L,L,L]
-
-go (App (A,L,A,F,L,L,L) L) ([], [])
-  go (App L (A,F,L,L,L)) ([], [])
-    (bytes', offsets') = ([0], [])
-    go (App (F,L,L) L) ([0], [])
-      (bytes', offsets') = ([0200], [])
-      (bytes'', offsets'') = ([02000], [])
-      return ([02000], [b1 b4])
-    (bytes'', offsets'') = ([02000], [b1 b4])
-    return ([02000], [b1 b4, b0 a1])
-  (bytes', offsets') = ([02000], [b1 b4, b0 a1])
-  (bytes'', offset'') = ([020000], [b1 b4, b0 a1])
-  return ([020000], [b1 b4, b0 a1, a2 b5])
--}
