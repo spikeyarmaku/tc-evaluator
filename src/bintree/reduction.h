@@ -16,7 +16,6 @@ struct Reduct {
 void print_reduct(int ind, struct Reduct reduct);
 
 // Apply reduction rules to a subtree
-// TODO down_depth is not needed here, it is just there for indentation
 void apply_rules(int ind, struct Tree* tree, struct Reduct reduct);
 
 // Traverse and reduce the tree

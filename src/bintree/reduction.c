@@ -29,7 +29,6 @@ void print_reduct(int ind, struct Reduct reduct) {
 }
 
 // Apply reduction rules to a subtree
-// TODO down_depth is not needed here, it is just there for indentation
 void apply_rules(int ind, struct Tree* tree, struct Reduct reduct) {
     debug_indent(ind, "apply_rules root: %lu\n", (size_t)*reduct.root);
     print_reduct(ind, reduct);
@@ -56,17 +55,13 @@ void apply_rules(int ind, struct Tree* tree, struct Reduct reduct) {
         struct Node* left = add_node(tree, NULL, NULL);
         struct Node* right = add_node(tree, NULL, NULL);
         struct Node* top = add_node(tree, left, right);
-        // duplicate_node_to(tree, get_right_addr(child0), get_left_addr(left));
         duplicate_node_to(tree, get_right(child0), get_left_addr(left));
-        // duplicate_node_to(tree,
-        //     get_right_addr(reduct.apps[2]), get_right_addr(left));
-        duplicate_node_to(tree, get_right(reduct.apps[2]), get_right_addr(left));
-        // duplicate_node_to(tree,
-        //     get_right_addr(reduct.apps[1]), get_left_addr(right));
-        duplicate_node_to(tree, get_right(reduct.apps[1]), get_left_addr(right));
-        // duplicate_node_to(tree,
-        //     get_right_addr(reduct.apps[2]), get_right_addr(right));
-        duplicate_node_to(tree, get_right(reduct.apps[2]), get_right_addr(right));
+        duplicate_node_to(tree, get_right(reduct.apps[2]),
+            get_right_addr(left));
+        duplicate_node_to(tree, get_right(reduct.apps[1]),
+            get_left_addr(right));
+        duplicate_node_to(tree, get_right(reduct.apps[2]),
+            get_right_addr(right));
         *reduct.root = top;
         return;
     }
@@ -83,7 +78,6 @@ void apply_rules(int ind, struct Tree* tree, struct Reduct reduct) {
     if (is_leaf(child2) == TRUE) {
         debug_indent(ind, "Invoking rule #3: t(tab)ct -> a\n");
         // t(tab)ct -> a
-        // duplicate_node_to(tree, get_right_addr(get_left(child0)), reduct.root);
         duplicate_node_to(tree, get_right(get_left(child0)), reduct.root);
         return;
     }

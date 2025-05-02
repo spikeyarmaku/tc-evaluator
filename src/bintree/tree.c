@@ -51,8 +51,6 @@ struct Node* alloc_node(struct Tree* tree, struct Node* left,
 {
     struct Node* new_node = node_stack_alloc(tree->stack);
     set_left_right(new_node, left, right);
-    // debug_indent(0, "Adding new node %lu with left %lu and right %lu\n",
-    //     (size_t)new_node, (size_t)left, (size_t)right);
     return new_node;
 }
 
@@ -70,34 +68,7 @@ struct Node* add_node(struct Tree* tree, struct Node* left, struct Node* right)
 }
 
 // Copy a node to another address, creating an indirection node if necessary
-// At the end of the operation, `*old_addr = *new_addr` should be true
-// void duplicate_node_to(struct Tree* tree, struct Node** old_addr,
-//     struct Node** new_addr)
-// {
-//     assert(old_addr != NULL);
-
-//     // Check if the node is a leaf
-//     if (*old_addr == NULL) {
-//         *new_addr = NULL;
-//         return;
-//     }
-
-//     // Check if the node to be copied is already an indirection
-//     if (get_tag(*old_addr) == Indir) {
-//         incr_ref(*old_addr);
-//     } else {
-//         // If not, envelope it in one and update the old address
-//         struct Node* result = add_node(tree, NULL, NULL);
-//         set_indir_to(result, *old_addr);
-//         incr_ref(result);
-//         *old_addr = result;
-//     }
-
-//     // Update the new address
-//     *new_addr = *old_addr;
-//     return;
-// }
-
+// At the end of the operation, `old_addr` should be equal to `*new_addr`
 void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
     struct Node** new_addr)
 {
