@@ -1,0 +1,3 @@
+cabal run tc-comp -- test.txt -cb test.txt.c
+gcc test.txt.c -o .output/a.out -O0 -g
+valgrind --tool=callgrind .output/a.out
