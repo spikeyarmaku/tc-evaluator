@@ -123,9 +123,8 @@ struct Node* compost_stack_pop(struct Stack* stack) {
         } else {
             stack->current_segment = stack->current_segment->prev_segment;
         }
-    } else {
-        stack->current_segment->next_free_addr -= sizeof(struct Node*);
     }
+    stack->current_segment->next_free_addr -= sizeof(struct Node*);
     return *(struct Node**)stack->current_segment->next_free_addr;
 }
 
