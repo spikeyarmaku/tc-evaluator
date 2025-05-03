@@ -69,7 +69,9 @@ void apply_rules(int ind, struct Tree* tree, struct Reduct reduct) {
     // first child is a fork
     // Reduce last child
     struct Node* child2 = get_right(reduct.apps[2]);
+    #ifdef DEBUG_PRINTS
     print_tree(ind, tree);
+    #endif
     if (child2 != NULL) {
         (void)reduce(ind + 1, tree, get_right_addr(reduct.apps[2]), 0);
         child2 = get_right(reduct.apps[2]);
@@ -142,7 +144,9 @@ struct Reduct reduce(int ind, struct Tree* tree, struct Node** node_addr,
         struct Node* node_to_delete = *node_addr;
         apply_rules(ind, tree, reduct);
         delete_node(tree, node_to_delete);
+        #ifdef DEBUG_PRINTS
         print_tree(ind, tree);
+        #endif
         draw_tree(".output/output_tree", tree);
 
         return reduce(ind, tree, node_addr, down_depth);
