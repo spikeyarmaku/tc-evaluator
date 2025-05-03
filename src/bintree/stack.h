@@ -8,7 +8,7 @@
 #include "node.h"
 
 struct Stack {
-    size_t size; // The size of each segment's data array in bytes
+    size_t segment_size; // The size of each segment's data array in bytes
     struct StackSegment* current_segment;
 };
 

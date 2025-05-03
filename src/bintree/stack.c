@@ -12,7 +12,6 @@ struct StackSegment {
 
 struct StackSegment* _segment_make(size_t size);
 void _segment_insert_new(struct Stack* stack);
-void _stack_incr(struct Stack* stack, size_t size);
 void _node_segment_print(int ind, struct StackSegment* segment);
 void _compost_segment_print(int ind, struct StackSegment* segment);
 struct StackSegment* _segment_copy(struct StackSegment* segment, size_t size);
@@ -20,15 +19,27 @@ struct StackSegment* _segment_copy(struct StackSegment* segment, size_t size);
 // ------------------------------ PUBLIC METHODS ------------------------------
 struct Stack* stack_make(size_t size) {
     struct Stack* stack = malloc(sizeof(struct Stack));
-    stack->size = size;
+    stack->segment_size = size;
     stack->current_segment = _segment_make(size);
 
     return stack;
 }
 
 uint8_t* stack_alloc(struct Stack* stack, size_t size) {
+    assert(size <= stack->segment_size);
+
     uint8_t* result = stack->current_segment->next_free_addr;
-    _stack_incr(stack, size);
+    uint8_t* new_next = stack->current_segment->next_free_addr + size;
+    if (new_next >= stack->current_segment->terminator_addr) {
+        if (stack->current_segment->next_segment == NULL) {
+            _segment_insert_new(stack);
+        }
+        stack->current_segment = stack->current_segment->next_segment;
+        result = stack->current_segment->next_free_addr;
+        new_next = stack->current_segment->next_free_addr + size;
+    }
+
+    stack->current_segment->next_free_addr = new_next;
     return result;
 }
 
@@ -131,22 +142,9 @@ struct StackSegment* _segment_make(size_t size) {
 }
 
 void _segment_insert_new(struct Stack* stack) {
-    struct StackSegment* new_segment = _segment_make(stack->size);
+    struct StackSegment* new_segment = _segment_make(stack->segment_size);
     stack->current_segment->next_segment = new_segment;
     new_segment->prev_segment = stack->current_segment;
-}
-
-void _stack_incr(struct Stack* stack, size_t size) {
-    if (stack->current_segment->next_free_addr ==
-        stack->current_segment->terminator_addr)
-    {
-        if (stack->current_segment->next_segment == NULL) {
-            _segment_insert_new(stack);
-        }
-        stack->current_segment = stack->current_segment->next_segment;
-    } else {
-        stack->current_segment->next_free_addr += size;
-    }
 }
 
 void _node_segment_print(int ind, struct StackSegment* segment) {
