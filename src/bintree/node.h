@@ -39,55 +39,59 @@
 // - Number
 //      They contain a 126-bit natural number, that can be incrementally
 //      unpacked into a tree
-// - System call
-//      Contain information regarding a system call
+// - Compressed
+//      They are trees that are represented as bits, where 1 is an App node, and
+//      0 is a leaf. They can also be incrementally unpacked into a tree, but it
+//      could be quite slow. Recommended for low-memory environments
 
 // ------------------------------------ NODE ----------------------------------
 // The least significant 2 bits of `left` is a tag:
 // 0 - regular pointer to two children
 // 1 - reference counted pointer, `left` containing the ref count, `right`
 //     containing the pointer to the child
-// 2 - a tree encoded as a 126-bit unsigned integer
-// 3 - system call
+// 2 - a tree, representing a number, encoded as the 126-bit number itself
+// 3 - a tree encoded in binary, using 126 bits (App - 1, Leaf - 0)
 struct Node {
-    size_t left;
-    size_t right;
+    uintptr_t left;
+    uintptr_t right;
 };
 
 // Abuse the fact that these pointers are at least 4 bytes long, so the 2 least
 // significant bits are always 0. These tags are stored there.
 // TODO At this point only App and Indir are considered. Need to incorporate
 // the other types.
-enum Tag {
+enum NodeTag {
     App     = 0,
     
     // An Indir will only appear on the right side of a parent App (due to only
     // rule #2 featuring any copying, and only on the right side of Apps)
     Indir   = 1,
     
+    // If more than 2 possible values are required, the right child of a node
+    // has to be tagged as well, and code must be updated accordingly
     // Number  = 2, // TODO Handle it
-    
-    // Syscall = 3  // TODO Handle it
+    // Compressed = 3
 };
 
-enum Tag    get_tag (struct Node* node);
-void        set_tag (struct Node* node, enum Tag tag);
+enum NodeTag    get_tag (const struct Node* node);
+void            set_tag (struct Node* node, enum NodeTag tag);
 
-struct Node*    get_left                (struct Node* node);
-struct Node*    get_right               (struct Node* node);
-struct Node**   get_left_addr           (struct Node* node);
-struct Node**   get_right_addr          (struct Node* node);
-struct Node**   get_indir_child_addr    (struct Node* node);
-struct Node*    get_indir_child         (struct Node* node);
+struct Node*    get_left                (const struct Node* node);
+struct Node*    get_right               (const struct Node* node);
+struct Node**   get_left_addr           (const struct Node* node);
+struct Node**   get_right_addr          (const struct Node* node);
+struct Node**   get_indir_child_addr    (const struct Node* node);
+struct Node*    get_indir_child         (const struct Node* node);
 
-void    set_left        (struct Node* node, struct Node* left);
-void    set_right       (struct Node* node, struct Node* right);
-void    set_left_right  (struct Node* node, struct Node* left,
-    struct Node* right);
-BOOL    is_leaf         (struct Node* node);
+void    set_left        (struct Node* node, const struct Node* left);
+void    set_right       (struct Node* node, const struct Node* right);
+void    set_left_right  (struct Node* node, const struct Node* left,
+    const struct Node* right);
+bool_t  is_leaf         (const struct Node* node);
 
-void            set_indir_to    (struct Node* node, struct Node* new_node);
-BOOL            is_zero_ref     (struct Node* node);
+void            set_indir_to    (struct Node* node,
+    const struct Node* new_node);
+bool_t          is_zero_ref     (const struct Node* node);
 void            incr_ref        (struct Node* node);
 void            decr_ref        (struct Node* node);
 struct Node*    unset_indir     (struct Node* node);

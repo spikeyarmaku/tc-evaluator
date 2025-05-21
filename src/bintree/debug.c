@@ -25,6 +25,7 @@ void debug_indent(int indent_amount, const char* s, ...) {
 
 // Source: https://stackoverflow.com/questions/52845040/printing-a-long-in-binary-64-bit-representation
 void printbits(unsigned long n){
+    #ifdef DEBUG_PRINTS
     unsigned long i; 
     i = 1UL<<(sizeof(n)*CHAR_BIT-1);
     while(i>0){
@@ -34,4 +35,5 @@ void printbits(unsigned long n){
               printf("0"); 
          i >>= 1;
     }
+    #endif
 }

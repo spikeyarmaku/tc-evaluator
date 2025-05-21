@@ -11,17 +11,22 @@
 #include <string.h>
 
 struct Tree {
-    struct Stack* stack;
-    struct Stack* compost; // A collection of nodes that can be reused
     struct Node* root;
+
+    // Nodes of the tree
+    struct Stack* nodes;
+
+    // A collection of nodes that can be reused
+    struct Stack* freelist;
 };
 
 struct Tree* tree_make();
 
-struct Node* alloc_node(struct Tree* tree, struct Node* left,
-    struct Node* right);
+struct Node* alloc_node(struct Tree* tree, const struct Node* left,
+    const struct Node* right);
 // Add a node to a free empty node
-struct Node* add_node(struct Tree* tree, struct Node* left, struct Node* right);
+struct Node* add_node(struct Tree* tree, const struct Node* left,
+    const struct Node* right);
 
 // Create an indirection node
 void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
@@ -36,7 +41,6 @@ struct Node* reparent(struct Node** old_addr, struct Node** new_addr);
 
 void print_empty(int ind, struct Tree* tree);
 void print_root(int ind, struct Node* tree);
-void pretty_print_subtree(struct Node* node);
 // Print a textual representation of a tree (e.g. "ttt(tt)")
 void pretty_print(struct Node* root);
 void print_tree(int ind, struct Tree* tree);

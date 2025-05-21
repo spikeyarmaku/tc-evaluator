@@ -7,28 +7,33 @@
 #include "global.h"
 #include "node.h"
 
+// TODO remove segment_size
 struct Stack {
     size_t segment_size; // The size of each segment's data array in bytes
     struct StackSegment* current_segment;
 };
 
-struct Stack*   stack_make      (size_t size);
-uint8_t*        stack_alloc     (struct Stack* stack, size_t size);
-BOOL            stack_is_empty  (struct Stack* stack);
-uint8_t*        segment_get_data            (struct StackSegment* segment);
-uint8_t*        segment_get_next_free_addr  (struct StackSegment* segment);
+struct Stack*   stack_make              (size_t size);
+uint8_t*    stack_alloc                 (struct Stack* stack, size_t size);
+bool_t      stack_is_empty              (const struct Stack* stack);
+uint8_t*    stack_pop                   (struct Stack* stack, size_t size);
+void        stack_unpop                 (struct Stack* stack, size_t size);
+uint8_t*    stack_peek                  (struct Stack* stack, size_t size);
+uint8_t*    segment_get_data            (const struct StackSegment* segment);
+uint8_t*    segment_get_next_free_addr  (const struct StackSegment* segment);
 
 // Derivations
 
-struct Stack*   node_stack_make     ();
-struct Stack*   compost_stack_make  ();
-struct Node*    node_stack_alloc    (struct Stack* stack);
-void            compost_stack_add   (struct Stack* stack, struct Node* node);
-void            node_stack_print    (int ind, struct Stack* stack);
-void            compost_stack_print (int ind, struct Stack* stack);
+struct Stack*   node_stack_make             ();
+struct Stack*   freelist_stack_make          ();
+struct Node*    node_stack_alloc            (struct Stack* stack);
+void            freelist_stack_push          (struct Stack* stack,
+    const struct Node* node);
+void            node_stack_print            (int ind, struct Stack* stack);
+void            freelist_stack_print         (int ind, struct Stack* stack);
 
 // Utilities
 
-struct Node*    compost_stack_pop   (struct Stack* stack);
+struct Node*        freelist_stack_pop       (struct Stack* stack);
 
 #endif

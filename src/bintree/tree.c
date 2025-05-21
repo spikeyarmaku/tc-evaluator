@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "tree.h"
 
 // These constants are for drawing svg diagrams
@@ -19,43 +21,49 @@ struct DiagObj {
     struct Point pos;
 };
 
-int _obj_id = 0;
-int _file_id = 0;
+static int _obj_id = 0;
+static int _file_id = 0;
 
-int _get_next_obj_id();
-int _get_next_file_id();
-struct Point _make_point(int x, int y);
-struct DiagObj _make_obj(struct Point pos);
-void _merge_trees(struct Node* tree0, struct Node* tree1);
-struct Node* _recycle(struct Tree* tree);
+static int _get_next_obj_id();
+static int _get_next_file_id();
+static struct Point _make_point(int x, int y);
+static struct DiagObj _make_obj(struct Point pos);
+static void _merge_trees(struct Node* tree0, struct Node* tree1);
+static struct Node* _recycle(struct Tree* tree);
 
-void _svg_template(char* file_buf, char* content_buf, int w, int h);
-void _node_template(char* buf, size_t value, struct DiagObj obj, BOOL is_root);
-void _path_template(char* buf, struct DiagObj obj0, struct DiagObj obj1);
-int _get_tree_width(struct Node* tree);
-int _get_tree_height(struct Node* tree);
-void _draw_tree(char* node_buf, char* path_buf, struct Node* node,
-    struct DiagObj obj, BOOL is_root);
+static void _svg_template(char* file_buf, char* content_buf, int w, int h);
+static void _node_template(char* buf, uintptr_t value, struct DiagObj obj,
+    bool_t is_root);
+static void _path_template(char* buf, struct DiagObj obj0, struct DiagObj obj1);
+static int _get_tree_width(struct Node* tree);
+static int _get_tree_height(struct Node* tree);
+static void _draw_tree(char* node_buf, char* path_buf, struct Node* node,
+    struct DiagObj obj, bool_t is_root);
+
+static void _pretty_print_subtree(struct Node* node);
+
+// -----------------------------------------------------------------------------
 
 struct Tree* tree_make() {
     struct Tree* tree = malloc(sizeof(struct Tree));
-    tree->stack = node_stack_make();
-    tree->compost = compost_stack_make();
+    tree->nodes = node_stack_make();
     tree->root = NULL;
+    tree->freelist = freelist_stack_make();
     return tree;
 }
 
 // Allocate space for a new node on the stack
-struct Node* alloc_node(struct Tree* tree, struct Node* left,
-    struct Node* right)
+struct Node* alloc_node(struct Tree* tree, const struct Node* left,
+    const struct Node* right)
 {
-    struct Node* new_node = node_stack_alloc(tree->stack);
+    struct Node* new_node = node_stack_alloc(tree->nodes);
     set_left_right(new_node, left, right);
     return new_node;
 }
 
 // Either allocate or reuse space for a new node, and fill it with data
-struct Node* add_node(struct Tree* tree, struct Node* left, struct Node* right)
+struct Node* add_node(struct Tree* tree, const struct Node* left,
+    const struct Node* right)
 {
     struct Node* new_node = _recycle(tree);
 
@@ -93,7 +101,7 @@ void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
     *new_addr = old_addr;
 }
 
-// When a subtree is deleted, its root is marked in the compost stack
+// When a subtree is deleted, its root is marked in the freelist stack
 void delete_node(struct Tree* tree, struct Node* node_to_delete) {
     if (is_leaf(node_to_delete) == TRUE) {
         // Node is already just a leaf, nothing to do
@@ -109,7 +117,7 @@ void delete_node(struct Tree* tree, struct Node* node_to_delete) {
     }
 
     if (node_to_delete != NULL) {
-        compost_stack_add(tree->compost, node_to_delete);
+        freelist_stack_push(tree->freelist, node_to_delete);
     }
 }
 
@@ -124,30 +132,38 @@ struct Node* reparent(struct Node** old_addr, struct Node** new_addr) {
 }
 
 void print_empty(int ind, struct Tree* tree) {
-    if (tree->compost == NULL) {
+    if (tree->freelist == NULL) {
         debug_indent(ind, "No free nodes.\n");
     } else {
         debug_indent(ind, "Free nodes:\n");
-        compost_stack_print(ind, tree->compost);
+        freelist_stack_print(ind, tree->freelist);
     }
 }
 
 void print_root(int ind, struct Node* tree) {
-    debug_indent(ind, "Eval root: %lu\n", (size_t)tree);
+    #ifdef DEBUG_PRINTS
+    debug_indent(ind, "Eval root: %" PRIuPTR "\n", (uintptr_t)tree);
+    #endif
 }
 
-void pretty_print_subtree(struct Node* node) {
+void _pretty_print_subtree(struct Node* node) {
     if (is_leaf(node)) {
         printf("t");
         return;
     }
 
-    pretty_print_subtree(get_left(node));
+    _pretty_print_subtree(get_left(node));
     
     if (!is_leaf(get_right(node))) {
-        printf("(");
+#ifndef USE_SPACES
+            printf("(");
+#else
+            printf(" (");
+    } else {
+            printf(" ");
+#endif
     }
-    pretty_print_subtree(get_right(node));
+    _pretty_print_subtree(get_right(node));
     if (!is_leaf(get_right(node))) {
         printf(")");
     }
@@ -155,17 +171,19 @@ void pretty_print_subtree(struct Node* node) {
 
 // Print a textual representation of a tree (e.g. "ttt(tt)")
 void pretty_print(struct Node* root) {
-    pretty_print_subtree(root);
+    _pretty_print_subtree(root);
     printf("\n");
 }
 
 void print_tree(int ind, struct Tree* tree) {
-    node_stack_print(ind, tree->stack);
+    #ifdef DEBUG_PRINTS
+    node_stack_print(ind, tree->nodes);
     debug_indent(ind, "\n");
     print_empty(ind, tree);
     debug_indent(ind, "\n");
     print_root(ind, tree->root);
-    debug_indent(ind, "Root addr: %lu\n", (size_t)&tree->root);
+    debug_indent(ind, "Root addr: %" PRIuPTR "\n", (uintptr_t)&tree->root);
+    #endif
 }
 
 void draw_tree(char* filename, struct Tree* tree) {
@@ -178,9 +196,9 @@ void draw_tree(char* filename, struct Tree* tree) {
     int w = _get_tree_width(tree->root);
     int h = _get_tree_height(tree->root);
     struct Node** data = (struct Node**)segment_get_data(
-        tree->compost->current_segment);
+        tree->freelist->current_segment);
     struct Node** terminator = (struct Node**)segment_get_next_free_addr(
-        tree->compost->current_segment);
+        tree->freelist->current_segment);
     while (data != terminator) {
         int w2 = _get_tree_width(*data);
         w = (w > w2 ? w : w2) + HSEP * 2;
@@ -190,7 +208,7 @@ void draw_tree(char* filename, struct Tree* tree) {
     }
     w += VSEP * 2;
     h += HSEP * 2;
-    data = (struct Node**)segment_get_data(tree->compost->current_segment);
+    data = (struct Node**)segment_get_data(tree->freelist->current_segment);
     
     // Tree nodes
     int start_y = VSEP + BOX_HEIGHT / 2;
@@ -199,11 +217,11 @@ void draw_tree(char* filename, struct Tree* tree) {
     strcat(buf1, buf0);
     start_y += _get_tree_height(tree->root) + VSEP;
 
-    // Compost tree nodes
+    // Freelist tree nodes
     // NOTE: lazy solution - only draw the most recent segment
-    data = (struct Node**)segment_get_data(tree->compost->current_segment);
+    data = (struct Node**)segment_get_data(tree->freelist->current_segment);
     terminator = (struct Node**)segment_get_next_free_addr(
-        tree->compost->current_segment);
+        tree->freelist->current_segment);
     while (data != terminator) {
         _draw_tree(buf0, buf1, *data, _make_obj(_make_point(w / 2, start_y)),
             TRUE);
@@ -227,26 +245,26 @@ void draw_tree(char* filename, struct Tree* tree) {
 
 // ----------------------------- INTERNAL METHODS -----------------------------
 
-int _get_next_obj_id() {
+static int _get_next_obj_id() {
     int result = _obj_id;
     _obj_id++;
     return result;
 }
 
-int _get_next_file_id() {
+static int _get_next_file_id() {
     int result = _file_id;
     _file_id++;
     return result;
 }
 
-struct Point _make_point(int x, int y) {
+static struct Point _make_point(int x, int y) {
     struct Point point;
     point.x = x;
     point.y = y;
     return point;
 }
 
-struct DiagObj _make_obj(struct Point pos) {
+static struct DiagObj _make_obj(struct Point pos) {
     struct DiagObj obj;
     obj.id = _get_next_obj_id();
     obj.pos.x = pos.x;
@@ -254,7 +272,8 @@ struct DiagObj _make_obj(struct Point pos) {
     return obj;
 }
 
-void _svg_template(char* file_buf, char* content_buf, int w, int h) {
+static void _svg_template(char* file_buf, char* content_buf, int w, int h) {
+    #ifdef OUTPUT_DIAGRAMS
     sprintf(file_buf, "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   width=\"%dpx\"\n"
@@ -298,10 +317,14 @@ void _svg_template(char* file_buf, char* content_buf, int w, int h) {
 "     id=\"background\" />\n"
 "  %s\n"
 "</svg>\n", w, h, w, h, w, h, content_buf);
+    #endif
 }
 
 // `obj` is the midpoint of the box
-void _node_template(char* buf, size_t value, struct DiagObj obj, BOOL is_root) {
+static void _node_template(char* buf, uintptr_t value, struct DiagObj obj,
+    bool_t is_root)
+{
+    #ifdef OUTPUT_DIAGRAMS
     int left = obj.pos.x - BOX_WIDTH / 2;
     int top = obj.pos.y - BOX_HEIGHT / 2;
     int text_left = left + 5;
@@ -339,9 +362,12 @@ void _node_template(char* buf, size_t value, struct DiagObj obj, BOOL is_root) {
         text_left, text_top, FONT_SIZE, text_id, value);
     strcat(buf, temp_buf);
     free(temp_buf);
+    #endif
 }
 
-void _path_template(char* buf, struct DiagObj obj0, struct DiagObj obj1) {
+static void _path_template(char* buf, struct DiagObj obj0, struct DiagObj obj1)
+{
+    #ifdef OUTPUT_DIAGRAMS
     char rect_id_0[256];
     char rect_id_1[256];
     sprintf(rect_id_0, "rect%d", obj0.id);
@@ -358,9 +384,10 @@ void _path_template(char* buf, struct DiagObj obj0, struct DiagObj obj1) {
         obj1.pos.y, rect_id_0, rect_id_1);
     strcat(buf, temp_buf);
     free(temp_buf);
+    #endif
 }
 
-int _get_tree_width(struct Node* tree) {
+static int _get_tree_width(struct Node* tree) {
     if (tree == NULL) {
         return BOX_WIDTH;
     }
@@ -369,7 +396,7 @@ int _get_tree_width(struct Node* tree) {
         + HSEP;
 }
 
-int _get_tree_height(struct Node* tree) {
+static int _get_tree_height(struct Node* tree) {
     int height = BOX_HEIGHT;
     if (tree != NULL) {
         height += VSEP;
@@ -390,7 +417,7 @@ int _get_tree_height(struct Node* tree) {
 }
 
 // Merge tree1 to the rightmost empty node of tree0
-void _merge_trees(struct Node* tree0, struct Node* tree1) {
+static void _merge_trees(struct Node* tree0, struct Node* tree1) {
     // Find the rightmost empty node's address
     struct Node* rightmost_empty_addr = tree0;
     while (get_right(rightmost_empty_addr) != NULL) {
@@ -401,10 +428,10 @@ void _merge_trees(struct Node* tree0, struct Node* tree1) {
     set_right(rightmost_empty_addr, tree1);
 }
 
-// Take a tree from the compost, break off its children, store them in the
-// compost, and return the root node's address
-struct Node* _recycle(struct Tree* tree) {
-    struct Node* result = compost_stack_pop(tree->compost);
+// Take a tree from the freelist, break off its children, store them in the
+// freelist, and return the root node's address
+static struct Node* _recycle(struct Tree* tree) {
+    struct Node* result = freelist_stack_pop(tree->freelist);
     if (result != NULL) {
         if (get_tag(result) == Indir) {
             decr_ref(result);
@@ -417,22 +444,22 @@ struct Node* _recycle(struct Tree* tree) {
         } else {
             struct Node* left = get_left(result);
             if (left != NULL) {
-                compost_stack_add(tree->compost, left);
+                freelist_stack_push(tree->freelist, left);
             }
 
             struct Node* right = get_right(result);
             if (right != NULL) {
-                compost_stack_add(tree->compost, right);
+                freelist_stack_push(tree->freelist, right);
             }
         }
     }
     return result;
 }
 
-void _draw_tree(char* node_buf, char* path_buf, struct Node* node,
-    struct DiagObj obj, BOOL is_root)
+static void _draw_tree(char* node_buf, char* path_buf, struct Node* node,
+    struct DiagObj obj, bool_t is_root)
 {
-    _node_template(node_buf, (size_t)node, obj, is_root);
+    _node_template(node_buf, (uintptr_t)node, obj, is_root);
 
     if (node == NULL) {
         return;

@@ -6,6 +6,7 @@
 #ifdef DEBUG_PRINTS
 #include <stdarg.h>
 #include <stdio.h>
+#include <inttypes.h>
 #endif
 
 #include <limits.h>
