@@ -20,6 +20,8 @@
 // would certainly violate some code structuring guidelines, unless the code
 // responsible for tagging is restructured.
 
+// TODO Why does this runtime eat 6 gigs of RAM on fib 28?
+
 #include "vm.h"
 
 #include <inttypes.h>
@@ -158,7 +160,7 @@ static void _spine_stack_push(struct Stack* stack, struct Node** node) {
         debug("PUSH: %" PRIuPTR " (%" PRIuPTR ")\n", (uintptr_t)node,
             (uintptr_t)*(struct Node**)untag_value((uintptr_t)node));
     }
-    struct Node*** slot = (struct Node***)stack_alloc(stack,
+    struct Node*** slot = (struct Node***)stack_alloc(stack, SPINE_SEGMENT_SIZE,
         sizeof(struct Node*));
     *slot = node;
 }

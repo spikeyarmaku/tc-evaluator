@@ -53,11 +53,9 @@ struct Tree* tree_make() {
 }
 
 // Allocate space for a new node on the stack
-struct Node* alloc_node(struct Tree* tree, const struct Node* left,
-    const struct Node* right)
+struct Node* alloc_node(struct Tree* tree)
 {
     struct Node* new_node = node_stack_alloc(tree->nodes);
-    set_left_right(new_node, left, right);
     return new_node;
 }
 
@@ -68,7 +66,7 @@ struct Node* add_node(struct Tree* tree, const struct Node* left,
     struct Node* new_node = _recycle(tree);
 
     if (new_node == NULL) {
-        return alloc_node(tree, left, right);
+        new_node = alloc_node(tree);
     }
 
     set_left_right(new_node, left, right);

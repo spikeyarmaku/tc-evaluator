@@ -14,31 +14,31 @@ struct StackSegment {
 };
 
 static struct StackSegment* _segment_make(size_t size);
-static void _segment_insert_new(struct Stack* stack);
+static void _segment_insert_new(struct Stack* stack, size_t size);
 static void _node_segment_print(int ind, struct StackSegment* segment);
 static void _freelist_segment_print(int ind, struct StackSegment* segment);
 
 // ------------------------------ PUBLIC METHODS ------------------------------
-struct Stack* stack_make(size_t size) {
+struct Stack* stack_make(size_t segment_size) {
     struct Stack* stack = malloc(sizeof(struct Stack));
-    stack->segment_size = size;
-    stack->current_segment = _segment_make(size);
+    stack->current_segment = _segment_make(segment_size);
 
     return stack;
 }
 
-uint8_t* stack_alloc(struct Stack* stack, size_t size) {
-    assert(size <= stack->segment_size);
+uint8_t* stack_alloc(struct Stack* stack, size_t segment_size, size_t elem_size)
+{
+    assert(elem_size <= segment_size);
 
     uint8_t* result = stack->current_segment->next_free_addr;
-    uint8_t* new_next = stack->current_segment->next_free_addr + size;
+    uint8_t* new_next = stack->current_segment->next_free_addr + elem_size;
     if (new_next >= stack->current_segment->terminator_addr) {
         if (stack->current_segment->next_segment == NULL) {
-            _segment_insert_new(stack);
+            _segment_insert_new(stack, segment_size);
         }
         stack->current_segment = stack->current_segment->next_segment;
         result = stack->current_segment->next_free_addr;
-        new_next = stack->current_segment->next_free_addr + size;
+        new_next = stack->current_segment->next_free_addr + elem_size;
     }
 
     stack->current_segment->next_free_addr = new_next;
@@ -62,7 +62,7 @@ uint8_t* segment_get_next_free_addr(const struct StackSegment* segment) {
     return segment->next_free_addr;
 }
 
-uint8_t* stack_pop(struct Stack* stack, size_t size) {
+uint8_t* stack_pop(struct Stack* stack, size_t elem_size) {
     // If there's no entry in the current segment
     if (stack->current_segment->next_free_addr == stack->current_segment->data)
     {
@@ -73,23 +73,21 @@ uint8_t* stack_pop(struct Stack* stack, size_t size) {
             stack->current_segment = stack->current_segment->prev_segment;
         }
     }
-    stack->current_segment->next_free_addr -= size;
+    stack->current_segment->next_free_addr -= elem_size;
     return stack->current_segment->next_free_addr;
 }
 
-void stack_unpop(struct Stack* stack, size_t size) {
-    assert(size <= stack->segment_size);
-
-    uint8_t* new_next = stack->current_segment->next_free_addr + size;
+void stack_unpop(struct Stack* stack, size_t elem_size) {
+    uint8_t* new_next = stack->current_segment->next_free_addr + elem_size;
     if (new_next >= stack->current_segment->terminator_addr) {
         stack->current_segment = stack->current_segment->next_segment;
-        new_next = stack->current_segment->next_free_addr + size;
+        new_next = stack->current_segment->next_free_addr + elem_size;
     }
 
     stack->current_segment->next_free_addr = new_next;
 }
 
-uint8_t* stack_peek(struct Stack* stack, size_t size) {
+uint8_t* stack_peek(struct Stack* stack, size_t elem_size) {
     struct StackSegment* temp = stack->current_segment;
     // If there's no entry in the current segment
     if (temp->next_free_addr == temp->data)
@@ -101,7 +99,7 @@ uint8_t* stack_peek(struct Stack* stack, size_t size) {
             temp = temp->prev_segment;
         }
     }
-    return temp->next_free_addr - size;
+    return temp->next_free_addr - elem_size;
 }
 
 struct Stack* node_stack_make() {
@@ -113,14 +111,19 @@ struct Stack* freelist_stack_make() {
 }
 
 struct Node* node_stack_alloc(struct Stack* stack) {
-    return (struct Node*)stack_alloc(stack, sizeof(struct Node));
+    return (struct Node*)stack_alloc(stack, NODE_SEGMENT_SIZE,
+        sizeof(struct Node));
 }
 
 void freelist_stack_push(struct Stack* stack, const struct Node* node) {
     assert(node != NULL);
     struct Node** slot = (struct Node**)stack_alloc(stack,
-        sizeof(struct Node*));
+        FREELIST_SEGMENT_SIZE, sizeof(struct Node*));
     *slot = (struct Node*)node;
+}
+
+struct Node* freelist_stack_peek(struct Stack* stack) {
+    return *(struct Node**)stack_peek(stack, sizeof(struct Node*));
 }
 
 void node_stack_print(int ind, struct Stack* stack) {
@@ -172,8 +175,8 @@ static struct StackSegment* _segment_make(size_t size) {
     return segment;
 }
 
-static void _segment_insert_new(struct Stack* stack) {
-    struct StackSegment* new_segment = _segment_make(stack->segment_size);
+static void _segment_insert_new(struct Stack* stack,size_t size) {
+    struct StackSegment* new_segment = _segment_make(size);
     stack->current_segment->next_segment = new_segment;
     new_segment->prev_segment = stack->current_segment;
 }

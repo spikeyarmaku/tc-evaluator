@@ -8,9 +8,9 @@ typedef uint8_t bool_t;
 #define TRUE 1
 #define FALSE 0
 
-#define NODE_SEGMENT_SIZE 1024
-#define FREELIST_SEGMENT_SIZE 256
-#define SPINE_SEGMENT_SIZE 256
+#define NODE_SEGMENT_SIZE 65536 // 1024
+#define FREELIST_SEGMENT_SIZE 65536 // 256
+#define SPINE_SEGMENT_SIZE 65536 // 256
 
 // Control space usage during pretty-printing trees:
 // tt(tt(tt)t) vs. t t (t t (t t) t)

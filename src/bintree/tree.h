@@ -22,8 +22,8 @@ struct Tree {
 
 struct Tree* tree_make();
 
-struct Node* alloc_node(struct Tree* tree, const struct Node* left,
-    const struct Node* right);
+// Allocate space for a node
+struct Node* alloc_node(struct Tree* tree);
 // Add a node to a free empty node
 struct Node* add_node(struct Tree* tree, const struct Node* left,
     const struct Node* right);
