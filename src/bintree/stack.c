@@ -103,11 +103,11 @@ uint8_t* stack_peek(struct Stack* stack, size_t elem_size) {
 }
 
 struct Stack* node_stack_make() {
-    return stack_make(NODE_SEGMENT_SIZE * sizeof(struct Node));
+    return stack_make(NODE_SEGMENT_SIZE);
 }
 
 struct Stack* freelist_stack_make() {
-    return stack_make(FREELIST_SEGMENT_SIZE * sizeof(struct Node*));
+    return stack_make(FREELIST_SEGMENT_SIZE);
 }
 
 struct Node* node_stack_alloc(struct Stack* stack) {

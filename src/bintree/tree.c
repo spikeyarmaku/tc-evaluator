@@ -3,7 +3,7 @@
 #include "tree.h"
 
 // These constants are for drawing svg diagrams
-#define BOX_WIDTH 60
+#define BOX_WIDTH 80
 #define BOX_HEIGHT 20
 #define HSEP 10
 #define VSEP 10

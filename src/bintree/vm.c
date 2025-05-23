@@ -85,8 +85,7 @@ bool_t vm_step(struct VM* vm) {
     // just ended
     if (top_addr == NULL) {
         debug("top_addr == NULL\n");
-        // Pop another two, and see if it is still NULL
-        (void)_spine_stack_pop(vm->spine);
+        // Pop another, and see if it is still NULL
         if (_spine_stack_pop(vm->spine) == NULL) {
             debug("--- EMPTY STACK, reduction is over ---\n");
             return TRUE;
@@ -94,10 +93,10 @@ bool_t vm_step(struct VM* vm) {
         _spine_stack_unpop(vm->spine);
         return FALSE;
     }
+
     // If the top of the stack points to a leaf, check if the top is the left or
-    // right child (two NULLs in stack). If left, go backwards, tag the parent,
-    // and push its right child. If right, just go backwards and pop the two
-    // NULLs.
+    // right child (NULL above in stack). If left, go backwards, tag the parent,
+    // and push its right child. If right, just go backwards and pop the NULL.
     struct Node* top = *top_addr;
     if (top == NULL) {
         debug("top == NULL\n");
@@ -109,9 +108,7 @@ bool_t vm_step(struct VM* vm) {
 
         _spine_stack_push(vm->spine,
             (struct Node**)tag_value((uintptr_t)temp, Evaled));
-        // Push two NULLs, so if there aren't enough children, the 3rd entry
-        // from the top of the stack won't be tagged
-        _spine_stack_push(vm->spine, NULL);
+        // Push a NULL to mark a right-descend
         _spine_stack_push(vm->spine, NULL);
         _spine_stack_push(vm->spine, get_right_addr(*temp));
         return FALSE;
@@ -150,7 +147,7 @@ static struct Node** _set_eval_tag(struct Node** node, enum EvalTag tag) {
 }
 
 static struct Stack* _spine_stack_make() {
-    return stack_make(SPINE_SEGMENT_SIZE * sizeof(struct Node*));
+    return stack_make(SPINE_SEGMENT_SIZE);
 }
 
 static void _spine_stack_push(struct Stack* stack, struct Node** node) {
@@ -250,17 +247,18 @@ static void _apply_rules(struct VM* vm) {
 
     if (apps[2] == NULL) {
         if (apps[1] != NULL) {
-            // There aren't enough children to induce reduction, so push a NULL
-            // onto the stack, push apps[1], then two NULLs and the right child
-            // of apps[1]. There's no need to push apps[0] onto the stack, as it
-            // is already reduced.
+            // There aren't enough children to induce reduction
             _spine_stack_push(vm->spine, NULL);
-            _spine_stack_push(vm->spine,
-                (struct Node**)tag_value((uintptr_t)apps[1], (uint8_t)Evaled));
-            _spine_stack_push(vm->spine, NULL);
+            _spine_stack_push_with_tag(vm->spine, apps[1], Evaled);
             _spine_stack_push(vm->spine, NULL);
             _spine_stack_push(vm->spine, get_right_addr(*apps[1]));
         }
+        return;
+    }
+
+    if (apps[1] == NULL) {
+        // There aren't enough children to induce reduction
+        _spine_stack_push_with_tag(vm->spine, apps[2], tags[2]);
         return;
     }
 
@@ -301,7 +299,6 @@ static void _apply_rules(struct VM* vm) {
             _spine_stack_push_with_tag(vm->spine, apps[2], Evaled);
 
             // And then induce reduction of the top child as well
-            _spine_stack_push(vm->spine, NULL);
             _spine_stack_push(vm->spine, NULL);
             _spine_stack_push(vm->spine, get_right_addr(*apps[2]));
             return;

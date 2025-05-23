@@ -2,6 +2,7 @@
 #define DEBUG_H
 
 // #define DEBUG_PRINTS
+// #define OUTPUT_DIAGRAMS
 
 #ifdef DEBUG_PRINTS
 #include <stdarg.h>

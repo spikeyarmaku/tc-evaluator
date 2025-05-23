@@ -8,15 +8,17 @@ typedef uint8_t bool_t;
 #define TRUE 1
 #define FALSE 0
 
-#define NODE_SEGMENT_SIZE 65536 // 1024
-#define FREELIST_SEGMENT_SIZE 65536 // 256
-#define SPINE_SEGMENT_SIZE 65536 // 256
+#define NODE_SEGMENT_CAPACITY 4096 // 1024
+#define FREELIST_SEGMENT_CAPACITY 4096 // 256
+#define SPINE_SEGMENT_CAPACITY 4096 // 256
+
+#define NODE_SEGMENT_SIZE (NODE_SEGMENT_CAPACITY * sizeof(struct Node))
+#define FREELIST_SEGMENT_SIZE (FREELIST_SEGMENT_CAPACITY * sizeof(struct Node*))
+#define SPINE_SEGMENT_SIZE (SPINE_SEGMENT_CAPACITY * sizeof(struct Node*))
 
 // Control space usage during pretty-printing trees:
 // tt(tt(tt)t) vs. t t (t t (t t) t)
 // #define USE_SPACES
-
-// #define OUTPUT_DIAGRAMS
 
 // Since all nodes consist of two machine words, at least one bit is always
 // available for tags
