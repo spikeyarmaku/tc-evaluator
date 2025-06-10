@@ -10,7 +10,7 @@ struct StackSegment {
     uint8_t* terminator_addr; // The first out-of-bounds address
     struct StackSegment* next_segment;
     struct StackSegment* prev_segment;
-    uint8_t data[];
+    uint8_t data[]; // TODO Enforce that it starts at an even address
 };
 
 static struct StackSegment* _segment_make(size_t size);

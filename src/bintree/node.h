@@ -6,6 +6,7 @@
 #include <assert.h>
 
 #include "global.h"
+#include "debug.h"
 
 // The tree is stored as a series of Apps. So FLL would be stored as
 //     A
@@ -60,21 +61,24 @@ struct Node {
 // significant bits are always 0. These tags are stored there.
 // TODO At this point only App and Indir are considered. Need to incorporate
 // the other types.
-enum NodeTag {
+enum NodeTagLeft {
     App     = 0,
     
-    // An Indir will only appear on the right side of a parent App (due to only
-    // rule #2 featuring any copying, and only on the right side of Apps)
-    Indir   = 1,
-    
-    // If more than 2 possible values are required, the right child of a node
-    // has to be tagged as well, and code must be updated accordingly
-    // Number  = 2, // TODO Handle it
-    // Compressed = 3
+    // Indir could be made to mean multiple things (and renamed to something
+    // else that reflects this) by adding additional tags to it. This could be
+    // used to represent numbers, or anything else.
+    Indir   = 1
 };
 
-enum NodeTag    get_tag (const struct Node* node);
-void            set_tag (struct Node* node, enum NodeTag tag);
+enum NodeTagRight {
+    Unreduced   = 0,
+    Reduced     = 1
+};
+
+enum NodeTagLeft    get_tag_left    (const struct Node* node);
+void                set_tag_left    (struct Node* node, enum NodeTagLeft tag);
+enum NodeTagRight   get_tag_right   (const struct Node* node);
+void                set_tag_right   (struct Node* node, enum NodeTagRight tag);
 
 struct Node*    get_left                (const struct Node* node);
 struct Node*    get_right               (const struct Node* node);
@@ -82,6 +86,7 @@ struct Node**   get_left_addr           (const struct Node* node);
 struct Node**   get_right_addr          (const struct Node* node);
 struct Node**   get_indir_child_addr    (const struct Node* node);
 struct Node*    get_indir_child         (const struct Node* node);
+struct Node*    deref_node_addr         (struct Node** node_addr);
 
 void    set_left        (struct Node* node, const struct Node* left);
 void    set_right       (struct Node* node, const struct Node* right);

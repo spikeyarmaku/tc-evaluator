@@ -11,8 +11,8 @@
 ; t(ttt)t(ttt)              ; ttt
 
 ;;; Redexes on lower levels
-; t (tt (tttt)) tt          ; t
-; t (tt (tttt)) t           ; t (ttt) t
+; t(tt(tttt))tt          ; t
+; t(tt(tttt))t           ; t(ttt)t
 
 ;;; All reduction rules in lower levels
 ; t(tttt)                   ; tt
@@ -46,10 +46,13 @@
 ;;; Random trees, i don't feel like deciphering them, they are leftovers from
 ;;; earlier tests
 ; t (tttt) (tttt) (tttt)    ; t
-; tt (ttt (tt)) t (ttt)     ; t (ttt)
+; tt (ttt (tt)) t (ttt)     ; t(ttt)
 ; t(tttt)t                  ; ttt
 ; tt(tttt)                  ; ttt
 ; t (tt (tttt)) t (tttt)    ; t
+
+;;; Test if children are reduced properly
+; ttttttt                   ; t
 
 ;;; And True False
 ; (t (t (t t t) (t t (t (t (t t)) t))) t) (t t) t
@@ -68,12 +71,22 @@
                             ; tt
 
 ;;; Fibonacci bench
-; (t (t (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t (t (t t) t) t)))) (t (t (t (t (t t (t (t (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t t))) (t (t (t t t)) t)))) (t t (t t))))) (t (t (t t (t (t (t t (t (t (t (t (t t (t (t (t t t))))) t))))) (t t)))) (t t)))) (t t t)))) (t (t (t t (t t)))))) (t t (t (t t))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))) (t t t))))))) (t (t (t t (t (t (t t (t (t (t (t (t t (t (t (t t (t (t (t t t)) t))) (t t)))) (t (t (t t (t (t (t t (t (t (t (t (t t)) t))))) (t t)))) (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))))) (t t)))) (t (t (t (t (t t (t (t (t t (t (t (t t t)) t))) (t t)))) (t (t (t t t)) t))) (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t t))) (t (t (t t t)) t)))) (t t (t t))))) (t (t (t (t (t t (t (t (t t t)) t))) (t t))) (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))))))) (t t (t (t (t t) (t t t)) (t t (t t t))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))) (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))) (t t t))
-; (△ △ (△ △ (△ (△ △) (△ (△ △) △)))) ; 12
-; (△ △ (△ (△ △) (△ △ (△ (△ △) △)))) ; 10
+(t (t (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t (t (t t) t) t)))) (t (t (t (t (t t (t (t (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t t))) (t (t (t t t)) t)))) (t t (t t))))) (t (t (t t (t (t (t t (t (t (t (t (t t (t (t (t t t))))) t))))) (t t)))) (t t)))) (t t t)))) (t (t (t t (t t)))))) (t t (t (t t))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))) (t t t))))))) (t (t (t t (t (t (t t (t (t (t (t (t t (t (t (t t (t (t (t t t)) t))) (t t)))) (t (t (t t (t (t (t t (t (t (t (t (t t)) t))))) (t t)))) (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))))) (t t)))) (t (t (t (t (t t (t (t (t t (t (t (t t t)) t))) (t t)))) (t (t (t t t)) t))) (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t t))) (t (t (t t t)) t)))) (t t (t t))))) (t (t (t (t (t t (t (t (t t t)) t))) (t t))) (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))))))) (t t (t (t (t t) (t t t)) (t t (t t t))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))) (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))) (t t t))
+; (△ (△ △) (△ △ (△ (△ △) △))) ; 5
+(△ △ (△ △ (△ (△ △) (△ (△ △) (△ (△ △) △))))) ; 28
+; (△ (△ △) (△ (△ △) (△ (△ △) (△ (△ △) △)))) ; 15
+; (△ (△ △) (△ △ (△ △ (△ (△ △) (△ (△ △) △))))) ; 25
 ; (t t (t t (t (t t) (t t (t (t t) t))))) ; 20
+; (△ △ (△ (△ △) (△ △ (△ (△ △) △)))) ; 10
+; (△ (△ △) △) ; 1
 ; (t t (t t (t t (t (t t) t)))) ; 8
+; (△ (△ △) (△ △ (△ (△ △) (△ (△ △) △)))) ; 13
+; (△ △ (△ △ (△ (△ △) (△ (△ △) △)))) ; 12
 
 ;;; double 2
 ; (△ (△ (△ (△ (△ △ (△ (△ △ △)))) (△ (△ (△ △ (△ △))) (△ (△ (△ △ (△ △))) (△ △))))) (△ (△ (△ △)) △)) (△ △ (△ (△ △) △))
                             ; tt(tt(t(tt)t))
+
+;;; A collection of trees that didn't reduce correctly in earlier versions
+; t(t(t(tt)))t(ttt)           ; t(t(ttt))t
+; t(t(ttt)tt)(tt)             ; tt(tt)

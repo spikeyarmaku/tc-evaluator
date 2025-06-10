@@ -1,7 +1,9 @@
 module Main where
 
 import System.Environment (getArgs, getProgName)
-import System.IO (hGetContents, openFile, IOMode (..), hClose, hSetBuffering, stdout, BufferMode (..))
+import System.IO (hGetContents, openFile, IOMode (..), hClose, hSetBuffering,
+    stdout, BufferMode (..), hFlush)
+import System.Process (readProcess, callCommand)
 import Control.Monad (unless, forM_, when)
 
 import Tree (parse, treeToExpr, printExprAsTree, Tree, Expr(..),
@@ -10,9 +12,10 @@ import Tree (parse, treeToExpr, printExprAsTree, Tree, Expr(..),
 import Eval (isNormal, step, eval, evalWithRules, evalWithMainRulesN, Rule(..))
 import Inet (compileInet)
 import Global (binTreeBase)
-import Data.List (intercalate, nub)
-import System.Exit (exitSuccess)
+import Data.List (intercalate, nub, isInfixOf)
+import System.Exit (exitSuccess, exitFailure)
 import Data.Tuple (swap)
+import Data.Char (isSpace)
 
 data Command = Interpret | Compile Backend | DisplayHelp deriving (Eq, Show)
 data Backend = InteractionNet | BinTree deriving (Eq, Show)
@@ -84,13 +87,11 @@ debugEval (DebugPrintConfig t ls) e = do
 interpret :: Expr -> IO ()
 interpret = putStrLn . printExprAsTree . eval
 
-withTree :: FilePath -> (Tree -> a) -> (a -> IO ()) -> IO ()
-withTree fp convert action = do
+withTree :: FilePath -> (Tree -> IO ()) -> IO ()
+withTree fp action = do
     h <- openFile fp ReadMode
     f <- hGetContents h
-    case parse f of
-        Nothing -> return ()
-        Just tree -> action (convert tree)
+    forM_ (parse f) action
     hClose h
 
 main :: IO ()
@@ -99,6 +100,17 @@ main :: IO ()
 -- main = do
 --     hSetBuffering stdout LineBuffering
 --     search
+
+-- This version compares the runtime's result against the interpreter for small
+-- trees
+-- main = do
+--     forM_ [1400..] $ \i -> do
+--         let tree = nthTree i
+--         when (i `mod` 100 == 0) $
+--             putStrLn $ show i ++ " - " ++ show (size $ binTreeToTree tree)
+--         -- TODO run the evaluation, and run the C code, compare results
+--         checkProgram tree
+
 main = do
     getArgs >>= print
     getArgs >>= (print . parseFlags)
@@ -106,11 +118,33 @@ main = do
     prgName <- getProgName
     case command config of
         DisplayHelp ->  putStrLn $ helpMessage prgName
-        Interpret -> withTree (inputFile config) treeToExpr interpret
-        Compile InteractionNet -> withTree (inputFile config) treeToBinTree $
-            compileInet (outputFile config)
-        Compile BinTree -> withTree (inputFile config) treeToBinTree $
-            compileBinTree (outputFile config)
+        Interpret -> withTree (inputFile config) $ interpret . treeToExpr
+        Compile InteractionNet -> withTree (inputFile config) $
+            compileInet (outputFile config) . treeToBinTree
+        Compile BinTree -> withTree (inputFile config) $ \t ->  do
+            let tree = treeToBinTree t
+            print . showEvalPathTree . binTreeToTree $ tree
+            compileBinTree (outputFile config) tree
+
+checkProgram :: BinTree -> IO ()
+checkProgram t = do
+    let inp_file = "compare.txt"
+        outp_file = "compare.c"
+        config = Config (Compile BinTree) inp_file outp_file
+        strip "" = ""
+        strip (c:cs)
+            | isSpace c = strip cs
+            | otherwise = c : strip cs
+    writeFile inp_file (show $ binTreeToTree t)
+    compileBinTree (outputFile config) t
+    callCommand "./c_cmp.sh"
+    let i_res = printExprAsTree $ eval (treeToExpr $ binTreeToTree t)
+    putStrLn $ show (binTreeToTree t) ++ " -> " ++  i_res
+    readProcess "./compare.out" [] "" >>= \result -> do
+        unless (strip result `isInfixOf` i_res) $ do
+            putStrLn $ "MISMATCH: " ++ show result
+            exitFailure
+    hFlush stdout
 
 showTree :: Int -> String
 showTree = show . binTreeToTree . nthTree
@@ -119,14 +153,14 @@ showEvalPathNum :: Int -> String
 showEvalPathNum =
     show . evalWithMainRulesN 20 . treeToExpr . binTreeToTree . nthTree
 
-showEvalPathString :: String -> Maybe String
-showEvalPathString =
-    fmap ( show . swap . fmap exprToTree . swap . evalWithMainRulesN 20
-         . treeToExpr )
-    . parse
+showEvalPathTree :: Tree -> String
+showEvalPathTree =
+    show . swap . fmap exprToTree . swap . evalWithMainRulesN 20 . treeToExpr
 
--- Find the smallest trees that require at least 3 reduction rules to evaluate.
--- Smallest so far: tt(t(t(t(ttt)))(tt)(t(ttt))tt)t
+showEvalPathString :: String -> Maybe String
+showEvalPathString = fmap showEvalPathTree . parse
+
+-- Find the smallest trees that require at least 3 reduction rules to evaluate
 search :: IO ()
 search =
     forM_ [1608000..] $ \i -> do
@@ -135,9 +169,6 @@ search =
             isOk = rs == nub rs
         when (i `mod` 1000 == 0) $
             putStrLn $ show i ++ " - " ++ show (size $ binTreeToTree tree)
-        -- putStrLn $ "Checking tree # " ++ show i ++ " - " ++
-        --     show (size $ binTreeToTree tree) ++ " - " ++ show rs
-        -- putStrLn $ "Checking tree #" ++ show i
         when (isOk && length rs == 4) $ do
             putStrLn $ "Found tree with 4 rules: # " ++ show i ++ " - " ++
                 show (size $ binTreeToTree tree) ++ " - " ++ show rs
@@ -170,7 +201,7 @@ compileBinTree outFile binTree = do
         toStr (Just x) = "s" ++ show x
         makeApp :: Maybe Int -> Maybe Int -> Maybe Int -> String
         makeApp n left right =
-            "struct Node* " ++ toStr n ++ " = alloc_node(tree, " ++
+            "struct Node* " ++ toStr n ++ " = add_node(tree, " ++
             toStr left ++ ", " ++ toStr right ++ ");"
         -- Return the last variable number used and thecode generated so far
         compile :: Int -> BinTree -> Maybe (Int, [String])

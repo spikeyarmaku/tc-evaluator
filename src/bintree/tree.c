@@ -33,11 +33,11 @@ static struct Node* _recycle(struct Tree* tree);
 
 static void _svg_template(char* file_buf, char* content_buf, int w, int h);
 static void _node_template(char* buf, uintptr_t value, struct DiagObj obj,
-    bool_t is_root);
+    bool_t is_root, bool_t is_indir, bool_t is_reduced);
 static void _path_template(char* buf, struct DiagObj obj0, struct DiagObj obj1);
 static int _get_tree_width(struct Node* tree);
 static int _get_tree_height(struct Node* tree);
-static void _draw_tree(char* node_buf, char* path_buf, struct Node* node,
+static void _draw_tree(char* node_buf, char* path_buf, uintptr_t node,
     struct DiagObj obj, bool_t is_root);
 
 static void _pretty_print_subtree(struct Node* node);
@@ -87,7 +87,7 @@ void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
     }
 
     // Check if the node to be copied is already an indirection
-    if (get_tag(old_addr) != Indir) {
+    if (get_tag_left(old_addr) != Indir) {
         // If not, envelope it in one and update the old address
         struct Node* result = add_node(tree, get_left(old_addr),
             get_right(old_addr));
@@ -96,7 +96,9 @@ void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
     incr_ref(old_addr);
 
     // Update the new address
-    *new_addr = old_addr;
+    // *new_addr = old_addr;
+    *((struct Node**)untag_value((uintptr_t)new_addr)) = old_addr;
+    set_tag_right(*new_addr, Unreduced);
 }
 
 // When a subtree is deleted, its root is marked in the freelist stack
@@ -106,7 +108,7 @@ void delete_node(struct Tree* tree, struct Node* node_to_delete) {
         return;
     }
 
-    if (get_tag(node_to_delete) == Indir) {
+    if (get_tag_left(node_to_delete) == Indir) {
         decr_ref(node_to_delete);
         if (is_zero_ref(node_to_delete) == FALSE) {
             return;
@@ -117,16 +119,6 @@ void delete_node(struct Tree* tree, struct Node* node_to_delete) {
     if (node_to_delete != NULL) {
         freelist_stack_push(tree->freelist, node_to_delete);
     }
-}
-
-// Remove a node, reattach it at the provided place, and return the removed node
-struct Node* reparent(struct Node** old_addr, struct Node** new_addr) {
-    assert(old_addr != NULL);
-
-    struct Node* result = *new_addr;
-    *new_addr = *old_addr;
-    *old_addr = NULL;
-    return result;
 }
 
 void print_empty(int ind, struct Tree* tree) {
@@ -210,8 +202,8 @@ void draw_tree(char* filename, struct Tree* tree) {
     
     // Tree nodes
     int start_y = VSEP + BOX_HEIGHT / 2;
-    _draw_tree(buf0, buf1, tree->root, _make_obj(_make_point(w / 2, start_y)),
-        TRUE);
+    _draw_tree(buf0, buf1, (uintptr_t)tree->root,
+        _make_obj(_make_point(w / 2, start_y)), TRUE);
     strcat(buf1, buf0);
     start_y += _get_tree_height(tree->root) + VSEP;
 
@@ -221,8 +213,8 @@ void draw_tree(char* filename, struct Tree* tree) {
     terminator = (struct Node**)segment_get_next_free_addr(
         tree->freelist->current_segment);
     while (data != terminator) {
-        _draw_tree(buf0, buf1, *data, _make_obj(_make_point(w / 2, start_y)),
-            TRUE);
+        _draw_tree(buf0, buf1, (uintptr_t)*data,
+            _make_obj(_make_point(w / 2, start_y)), TRUE);
         strcat(buf1, buf0);
         start_y += _get_tree_height(*data) + VSEP;
         data++;
@@ -320,7 +312,7 @@ static void _svg_template(char* file_buf, char* content_buf, int w, int h) {
 
 // `obj` is the midpoint of the box
 static void _node_template(char* buf, uintptr_t value, struct DiagObj obj,
-    bool_t is_root)
+    bool_t is_root, bool_t is_indir, bool_t is_reduced)
 {
     #ifdef OUTPUT_DIAGRAMS
     int left = obj.pos.x - BOX_WIDTH / 2;
@@ -331,12 +323,24 @@ static void _node_template(char* buf, uintptr_t value, struct DiagObj obj,
     char text_id[256];
     char group_id[256];
     char rect_fill[16] = "#808080";
+    char text[128];
     if (is_root) {
         sprintf(rect_fill, "#FFFFFF");
     }
     sprintf(rect_id, "rect%d", obj.id);
     sprintf(text_id, "text%d", obj.id);
     sprintf(group_id, "g%d", obj.id);
+    
+    int offset = sprintf(text, "%" PRIuPTR, value);
+    if (is_indir == TRUE) {
+        struct Node* temp = (struct Node*)untag_value(value);
+        size_t refcount = temp->left;
+        refcount >>= 1;
+        offset += sprintf(text + offset, " (%lu)", refcount);
+    }
+    if (is_reduced == TRUE) {
+        sprintf(text + offset, " *");
+    }
     
     char* temp_buf = malloc(BUF_SIZE);
     sprintf(temp_buf, "<g\n"
@@ -355,9 +359,9 @@ static void _node_template(char* buf, uintptr_t value, struct DiagObj obj,
 "       font-family=\"FreeSans\"\n"
 "       font-size=\"%dpx\"\n"
 "       xml:space=\"preserve\"\n"
-"       id=\"%s\">%lu</text>\n"
+"       id=\"%s\">%s</text>\n"
 "  </g>\n", group_id, left, top, BOX_WIDTH, BOX_HEIGHT, rect_fill, rect_id,
-        text_left, text_top, FONT_SIZE, text_id, value);
+        text_left, text_top, FONT_SIZE, text_id, text);
     strcat(buf, temp_buf);
     free(temp_buf);
     #endif
@@ -398,7 +402,7 @@ static int _get_tree_height(struct Node* tree) {
     int height = BOX_HEIGHT;
     if (tree != NULL) {
         height += VSEP;
-        if (get_tag(tree) == Indir) {
+        if (get_tag_left(tree) == Indir) {
             height *= 2;
         }
         
@@ -431,7 +435,7 @@ static void _merge_trees(struct Node* tree0, struct Node* tree1) {
 static struct Node* _recycle(struct Tree* tree) {
     struct Node* result = freelist_stack_pop(tree->freelist);
     if (result != NULL) {
-        if (get_tag(result) == Indir) {
+        if (get_tag_left(result) == Indir) {
             decr_ref(result);
             if (is_zero_ref(result)) {
                 struct Node* empty = unset_indir(result);
@@ -454,26 +458,37 @@ static struct Node* _recycle(struct Tree* tree) {
     return result;
 }
 
-static void _draw_tree(char* node_buf, char* path_buf, struct Node* node,
+static void _draw_tree(char* node_buf, char* path_buf, uintptr_t node,
     struct DiagObj obj, bool_t is_root)
 {
-    _node_template(node_buf, (uintptr_t)node, obj, is_root);
+    struct Node* node_addr = (struct Node*)untag_value(node);
+    bool_t is_indir = FALSE;
+    bool_t is_reduced = FALSE;
+    if (node_addr != NULL) {
+        if (get_tag_left(node_addr) == Indir) {
+            is_indir = TRUE;
+        }
+        if (get_tag_right(node_addr) == Reduced) {
+            is_reduced = TRUE;
+        }
+    }
+    _node_template(node_buf, (uintptr_t)node, obj, is_root, is_indir,
+        is_reduced);
 
-    if (node == NULL) {
+    if (node_addr == NULL) {
         return;
     }
 
-    if (get_tag(node) == Indir) {
+    if (is_indir == TRUE) {
         struct Point new_pos = _make_point(obj.pos.x,
             obj.pos.y + VSEP + BOX_HEIGHT);
         struct DiagObj new_obj = _make_obj(new_pos);
 
         _path_template(path_buf, obj, new_obj);
-        _draw_tree(node_buf, path_buf, (struct Node*)node->right, new_obj,
-            FALSE);
+        _draw_tree(node_buf, path_buf, node_addr->right, new_obj, FALSE);
     } else {
-        int left_width = _get_tree_width(get_left(node));
-        int right_width = _get_tree_width(get_right(node));
+        int left_width = _get_tree_width(get_left(node_addr));
+        int right_width = _get_tree_width(get_right(node_addr));
         int full_width = left_width + HSEP + right_width;
 
         struct Point left_pos = _make_point(
@@ -489,7 +504,7 @@ static void _draw_tree(char* node_buf, char* path_buf, struct Node* node,
 
         _path_template(path_buf, obj, left_obj);
         _path_template(path_buf, obj, right_obj);
-        _draw_tree(node_buf, path_buf, get_left(node), left_obj, FALSE);
-        _draw_tree(node_buf, path_buf, get_right(node), right_obj, FALSE);
+        _draw_tree(node_buf, path_buf, node_addr->left, left_obj, FALSE);
+        _draw_tree(node_buf, path_buf, node_addr->right, right_obj, FALSE);
     }
 }

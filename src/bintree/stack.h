@@ -7,7 +7,6 @@
 #include "global.h"
 #include "node.h"
 
-// TODO remove segment_size
 struct Stack {
     struct StackSegment* current_segment;
 };

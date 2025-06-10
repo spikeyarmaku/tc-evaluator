@@ -37,8 +37,6 @@ void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
 // child.
 void delete_node(struct Tree* tree, struct Node* node_to_delete);
 
-struct Node* reparent(struct Node** old_addr, struct Node** new_addr);
-
 void print_empty(int ind, struct Tree* tree);
 void print_root(int ind, struct Node* tree);
 // Print a textual representation of a tree (e.g. "ttt(tt)")
