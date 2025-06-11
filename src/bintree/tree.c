@@ -97,7 +97,7 @@ void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
 
     // Update the new address
     // *new_addr = old_addr;
-    *((struct Node**)untag_value((uintptr_t)new_addr)) = old_addr;
+    set_value_at_node_addr(new_addr, old_addr);
     set_tag_right(*new_addr, Unreduced);
 }
 
@@ -109,16 +109,13 @@ void delete_node(struct Tree* tree, struct Node* node_to_delete) {
     }
 
     if (get_tag_left(node_to_delete) == Indir) {
-        decr_ref(node_to_delete);
         if (is_zero_ref(node_to_delete) == FALSE) {
-            return;
+            decr_ref(node_to_delete);
         }
-        node_to_delete = unset_indir(node_to_delete);
+        return;
     }
 
-    if (node_to_delete != NULL) {
-        freelist_stack_push(tree->freelist, node_to_delete);
-    }
+    freelist_stack_push(tree->freelist, node_to_delete);
 }
 
 void print_empty(int ind, struct Tree* tree) {
@@ -435,22 +432,27 @@ static void _merge_trees(struct Node* tree0, struct Node* tree1) {
 static struct Node* _recycle(struct Tree* tree) {
     struct Node* result = freelist_stack_pop(tree->freelist);
     if (result != NULL) {
-        if (get_tag_left(result) == Indir) {
-            decr_ref(result);
-            if (is_zero_ref(result)) {
-                struct Node* empty = unset_indir(result);
-                return empty;
+        // Indirs are not allowed in the freelist
+        assert(get_tag_left(result) != Indir);
+
+        struct Node* left = get_left(result);
+        if (left != NULL) {
+            if (get_tag_left(left) == Indir) {
+                if (is_zero_ref(left) == FALSE) {
+                    decr_ref(left);
+                }
             } else {
-                return NULL;
-            }
-        } else {
-            struct Node* left = get_left(result);
-            if (left != NULL) {
                 freelist_stack_push(tree->freelist, left);
             }
+        }
 
-            struct Node* right = get_right(result);
-            if (right != NULL) {
+        struct Node* right = get_right(result);
+        if (right != NULL) {
+            if (get_tag_left(right) == Indir) {
+                if (is_zero_ref(right) == FALSE) {
+                    decr_ref(right);
+                }
+            } else {
                 freelist_stack_push(tree->freelist, right);
             }
         }

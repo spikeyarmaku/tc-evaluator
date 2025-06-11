@@ -116,6 +116,19 @@ enum StepState vm_step(struct VM* vm) {
         return Running;
     }
 
+    // If the address points to a zero-ref indir node, delete it
+    // NOTE: The reason indirection nodes are deleted here, and not in
+    // `delete_node`, is the fact that if the stack spine contains a child of an
+    // indirection node, which is on the freelist, and it gets deleted, the
+    // node's right member (and therefore the address of its children) becomes
+    // invalid, thus invalidating the address found in the spine stack.
+    if (get_tag_left(top) == Indir) {
+        if (is_zero_ref(top) == TRUE) {
+            struct Node* node_to_delete = unset_indir(top);
+            freelist_stack_push(vm->tree->freelist, node_to_delete);
+        }
+    }
+
     enum NodeTagRight evaled_tag = get_tag_right(top);
 
     // Either induce reduction, or travel down the left child
@@ -280,7 +293,7 @@ static void _spine_stack_print(struct Stack* stack) {
 // - There are, and the second pop returns a tagged node address (rules 3a-3c)
 // - There are, and the current node is the first child
 static void _apply_rules(struct VM* vm) {
-    struct Node** apps[3];
+    struct Node** apps[3]; // apps[2] is the root
     enum DescentDir dir;
     TaggedNodeMemberAddr apps_temp;
     
@@ -351,7 +364,8 @@ static void _apply_rules(struct VM* vm) {
         struct Node** temp_apps = apps[0];
         apps[0] = apps[2];
         apps[2] = temp_apps;
-
+        
+        struct Node* node_to_delete = deref_node_addr(apps[2]);
         // Invoke rule 3a, 3b or 3c
         if (child_count == 0) {
             _apply_rule_3a(vm->tree, apps);
@@ -362,7 +376,9 @@ static void _apply_rules(struct VM* vm) {
                 _apply_rule_3c(vm->tree, apps);
             }
         }
+        delete_node(vm->tree, node_to_delete);
     } else {
+        struct Node* node_to_delete = deref_node_addr(apps[2]);
         // Current top is the first child
         if (child_count > 1) {
             // Push the top back
@@ -381,12 +397,13 @@ static void _apply_rules(struct VM* vm) {
             } else {
                 _apply_rule_2(vm->tree, apps);
             }
+            delete_node(vm->tree, node_to_delete);
         }
     }
 
     // Push the root to the stack
     _spine_stack_push(vm->spine, apps_temp);
-    draw_tree(".output/output_tree", vm->tree);
+    // draw_tree(".output/output_tree", vm->tree);
 }
 
 static void _apply_rule_1(struct Tree* tree, struct Node** apps[3]) {
@@ -409,7 +426,8 @@ static void _apply_rule_2(struct Tree* tree, struct Node** apps[3]) {
     duplicate_node_to(tree, child2, get_right_addr(left));
     duplicate_node_to(tree, child1, get_left_addr(right));
     duplicate_node_to(tree, child2, get_right_addr(right));
-    *((struct Node**)untag_value((uintptr_t)apps[2])) = top;
+    // *((struct Node**)untag_value((uintptr_t)apps[2])) = top;
+    set_value_at_node_addr(apps[2], top);
 }
 
 static void _apply_rule_3a(struct Tree* tree, struct Node** apps[3]) {
@@ -428,7 +446,8 @@ static void _apply_rule_3b(struct Tree* tree, struct Node** apps[3]) {
     struct Node* top = add_node(tree, NULL, NULL);
     duplicate_node_to(tree, get_right(child0), get_left_addr(top));
     duplicate_node_to(tree, get_right(child2), get_right_addr(top));
-    *((struct Node**)untag_value((uintptr_t)apps[2])) = top;
+    // *((struct Node**)untag_value((uintptr_t)apps[2])) = top;
+    set_value_at_node_addr(apps[2], top);
 }
 
 static void _apply_rule_3c(struct Tree* tree, struct Node** apps[3]) {
@@ -444,5 +463,6 @@ static void _apply_rule_3c(struct Tree* tree, struct Node** apps[3]) {
     duplicate_node_to(tree, get_right(get_left(child2)),
         get_right_addr(left));
     duplicate_node_to(tree, get_right(child2), get_right_addr(top));
-    *((struct Node**)untag_value((uintptr_t)apps[2])) = top;
+    // *((struct Node**)untag_value((uintptr_t)apps[2])) = top;
+    set_value_at_node_addr(apps[2], top);
 }

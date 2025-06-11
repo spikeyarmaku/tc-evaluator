@@ -32,7 +32,7 @@ uint8_t* stack_alloc(struct Stack* stack, size_t segment_size, size_t elem_size)
 
     uint8_t* result = stack->current_segment->next_free_addr;
     uint8_t* new_next = stack->current_segment->next_free_addr + elem_size;
-    if (new_next >= stack->current_segment->terminator_addr) {
+    if (new_next > stack->current_segment->terminator_addr) {
         if (stack->current_segment->next_segment == NULL) {
             _segment_insert_new(stack, segment_size);
         }
@@ -99,7 +99,7 @@ uint8_t* stack_peek(struct Stack* stack, size_t elem_size) {
             temp = temp->prev_segment;
         }
     }
-    return temp->next_free_addr - elem_size;
+    return (uint8_t*)((uintptr_t)temp->next_free_addr - elem_size);
 }
 
 struct Stack* node_stack_make() {
@@ -161,7 +161,12 @@ void freelist_stack_print(int ind, struct Stack* stack) {
 }
 
 struct Node* freelist_stack_pop(struct Stack* stack) {
-    return (struct Node*)stack_pop(stack, sizeof(struct Node*));
+    struct Node** result =
+        (struct Node**)stack_pop(stack, sizeof(struct Node*));
+    if (result == NULL) {
+        return NULL;
+    }
+    return *result;
 }
 
 // ----------------------------- INTERNAL METHODS -----------------------------

@@ -68,6 +68,10 @@ struct Node* deref_node_addr(struct Node** node_addr) {
     return (struct Node*)untag_value((uintptr_t)*node_addr);
 }
 
+void set_value_at_node_addr(struct Node** node_addr, struct Node* value) {
+    *(struct Node**)untag_value((uintptr_t)node_addr) = value;
+}
+
 void set_left(struct Node* node, const struct Node* left) {
     node->left = (uintptr_t)left;
 }

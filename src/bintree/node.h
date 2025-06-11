@@ -87,6 +87,8 @@ struct Node**   get_right_addr          (const struct Node* node);
 struct Node**   get_indir_child_addr    (const struct Node* node);
 struct Node*    get_indir_child         (const struct Node* node);
 struct Node*    deref_node_addr         (struct Node** node_addr);
+void            set_value_at_node_addr  (struct Node** node_addr,
+    struct Node* value);
 
 void    set_left        (struct Node* node, const struct Node* left);
 void    set_right       (struct Node* node, const struct Node* right);
