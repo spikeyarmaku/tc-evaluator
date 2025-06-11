@@ -4,14 +4,10 @@
 // so e.g. it gets the instructions AAALLLL, and by the second L, it realizes
 // that rule 1 has to be invoked
 
-// Idea:
-// What if children are stored in a reverse order? This way the whole tree would
-// not needed to be traversed to find the first redex, because that would be on
-// the top.
-
 // TODO Can there ever be a NULL node that is behind an indirection node?
 
-// TODO Why does this runtime eat 6 gigs of RAM on fib 28?
+// TODO Why does this runtime eat 2 gigs of RAM on fib 28? (Probably due to the
+// conservative deletion of nodes - indirs are only deleted in `vm_step`)
 
 // NOTE On the TC playground, there are DAG notations for trees. But from my
 // tests, reducing a tree in full form vs in DAG form does not differ much in
