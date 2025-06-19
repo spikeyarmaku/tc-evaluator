@@ -283,11 +283,6 @@ static void _spine_stack_print(struct Stack* stack) {
 // the subtrees are shared, the application nodes cannot be reorganized without
 // corrupting the subtree. Therefore, the whole subtree is marked for deletion
 // and the required parts are duplicated instead.
-
-// If the current top is evaled, the following cases are possible:
-// - There are not enough children to induce reduction (second pop returns NULL)
-// - There are, and the second pop returns a tagged node address (rules 3a-3c)
-// - There are, and the current node is the first child
 static void _apply_rules(struct VM* vm) {
     struct Node** apps[3]; // apps[2] is the root
     enum DescentDir dir;
@@ -295,7 +290,9 @@ static void _apply_rules(struct VM* vm) {
     
     // Check if this is a 3rd child
     bool_t third_child = FALSE;
-    apps[0] = _spine_stack_pop_with_tag(vm->spine, &dir);
+    apps_temp = _spine_stack_pop(vm->spine);
+    apps[0] = _untag_node_addr(apps_temp, &dir);
+    // apps[0] = _spine_stack_pop_with_tag(vm->spine, &dir);
     if (apps[0] == NULL) {
         return;
     }
@@ -316,9 +313,7 @@ static void _apply_rules(struct VM* vm) {
         if (dir == RightDescent) {
             return;
         }
-        // dirs[0] = dirs[2];
         // Check if there are enough children to induce reduction
-        // apps[2] is the root
         apps_temp = _spine_stack_pop(vm->spine);
         apps[1] = _untag_node_addr(apps_temp, &dir);
         if (apps[1] == NULL) {
@@ -360,7 +355,7 @@ static void _apply_rules(struct VM* vm) {
         struct Node** temp_apps = apps[0];
         apps[0] = apps[2];
         apps[2] = temp_apps;
-        
+
         struct Node* node_to_delete = deref_node_addr(apps[2]);
         // Invoke rule 3a, 3b or 3c
         if (child_count == 0) {
