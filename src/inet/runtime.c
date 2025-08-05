@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 // #define DEBUG_PRINTS
 
@@ -38,7 +39,7 @@ char* agent_type_str = "LSFEDATQI";
 #define P3 3
 #define PMAIN 4
 
-#define AGENT_BLOCK_SIZE 4096 // 1073741824 // 4096
+#define AGENT_BLOCK_SIZE 4096 // 1073741824
 #define PAIR_BLOCK_SIZE 4096 // 128
 
 enum ConnectType {NO_REF, SRC_REF, DST_REF, FULL_REF};
@@ -187,7 +188,7 @@ void store_pair(struct Pair pair) {
 
 // Compact the stack, and update pointers
 void free_agent(struct Agent* stack_slot) {
-    debug("=== Freeing %lu ===\n", (size_t)stack_slot);
+    debug("=== Freeing %" PRIuPTR " ===\n", (uintptr_t)stack_slot);
     // Check if this block is empty
     if (agent_stack.next_free_addr == agent_stack.current_block->data) {
         // Move to the top of the previous block
@@ -206,8 +207,8 @@ void free_agent(struct Agent* stack_slot) {
 
     // Update the parent's and children's ptr
     if (stack_slot->ports[PMAIN] != NULL)  {
-        debug("    Updating parent's ptr %lu\n",
-            (size_t)stack_slot->ports[PMAIN]);
+        debug("    Updating parent's ptr %" PRIuPTR "\n",
+            (uintptr_t)stack_slot->ports[PMAIN]);
         stack_slot->ports[PMAIN]->ports[stack_slot->port_numbers[PMAIN]] =
             stack_slot;
     } else {
@@ -215,8 +216,8 @@ void free_agent(struct Agent* stack_slot) {
     }
     for (int i = 0; i < stack_slot->port_count; i++) {
         if (stack_slot->ports[i] != NULL)  {
-            debug("    Updating child's ptr %lu\n",
-                (size_t)stack_slot->ports[i]);
+            debug("    Updating child's ptr %" PRIuPTR "\n",
+                (uintptr_t)stack_slot->ports[i]);
             stack_slot->ports[i]->ports[stack_slot->port_numbers[i]] =
                 stack_slot;
         } else {
@@ -225,7 +226,8 @@ void free_agent(struct Agent* stack_slot) {
         }
     }
 
-    debug("    Updating stack ptr %lu\n", (size_t)stack_slot->pair_stack_addr);
+    debug("    Updating stack ptr %" PRIuPTR "\n",
+        (uintptr_t)stack_slot->pair_stack_addr);
     // Update the stack's ptr
     if (stack_slot->pair_stack_addr != NULL) {
         *stack_slot->pair_stack_addr = stack_slot;
@@ -513,16 +515,14 @@ void debug_print_agent_stack() {
     }
     struct Agent* ptr = stack.current_block->data;
     while (ptr != stack.next_free_addr) {
-        debug("%2lu: %c %d %16lu | %16lu-%d |", (size_t)ptr,
-            debug_type_to_char(ptr->type), ptr->port_count,
-            (size_t)ptr->pair_stack_addr, (size_t)ptr->ports[PMAIN],
+        debug("%2lu: %c %d %16" PRIuPTR " | %16" PRIuPTR "-%d |",
+            (uintptr_t)ptr, debug_type_to_char(ptr->type), ptr->port_count,
+            (uintptr_t)ptr->pair_stack_addr, (uintptr_t)ptr->ports[PMAIN],
             ptr->port_numbers[PMAIN]);
         for (int i = 0; i < 4; i++) {
             if (i < ptr->port_count) {
-                debug(" %16lu-%d", (size_t)ptr->ports[i],
+                debug(" %16" PRIuPTR "-%d", (uintptr_t)ptr->ports[i],
                     ptr->port_numbers[i]);
-            // } else {
-            //     debug(" (%lu)", (size_t)ptr->ports[i]);
             }
         }
         debug("\n");
@@ -544,8 +544,9 @@ void debug_print_pair_stack() {
     }
     struct Pair* ptr = stack.current_block->data;
     while (ptr != stack.next_free_addr) {
-        debug("%8lu: %16lu %c %16lu %c\n", (size_t)ptr, (size_t)ptr->agent0,
-            debug_type_to_char(ptr->agent0->type), (size_t)ptr->agent1,
+        debug("%8" PRIuPTR ": %16" PRIuPTR " %c %16" PRIuPTR " %c\n",
+            (uintptr_t)ptr, (uintptr_t)ptr->agent0,
+            debug_type_to_char(ptr->agent0->type), (uintptr_t)ptr->agent1,
             debug_type_to_char(ptr->agent1->type));
         ptr++;
 

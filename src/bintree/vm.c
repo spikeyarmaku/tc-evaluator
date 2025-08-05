@@ -172,6 +172,13 @@ uint8_t* vm_serialize(struct VM* vm, size_t* size) {
     // Then serialize the spine stack as a list of indices, along with the tags.
     // NOTE Maybe the spine stack doesn't need to be serialized (only the tags),
     // if the nodes are stored in the order they appear in the spine stack?
+
+    // NOTE Serializing a tree can be done in three ways:
+    // - As a string of binary digits (1 - APP, 0 - LEAF)
+    //  - con: sharing cannot be represented
+    // - As an array of Nodes (with two indices per node)
+    //  - the size of the pointers would need to be declared
+    // - As a list of instructions
 }
 
 struct VM* vm_deserialize(uint8_t* data) {

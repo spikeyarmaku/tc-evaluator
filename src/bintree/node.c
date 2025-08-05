@@ -98,6 +98,11 @@ bool_t is_leaf(const struct Node* node) {
 }
 
 // Mark this app node as a ref-counted indirection to another app node
+// TODO Make it so that if the LSB of the left tag is 1, one of the remaining
+// bits marks user-defined values. So ...01 is indir, and ...11 is anything else
+// the user defines. It could be used e.g. to store numbers more efficiently.
+// There could be hooks registered by the host environment dealing with the
+// interpretation of these bits.
 void set_indir_to(struct Node* node, const struct Node* new_node) {
     node->right = (uintptr_t)new_node;
     node->left = 0;

@@ -18,7 +18,7 @@ typedef uint8_t bool_t;
 
 // Control space usage during pretty-printing trees:
 // tt(tt(tt)t) vs. t t (t t (t t) t)
-// #define USE_SPACES
+#define USE_SPACES
 
 // Since all nodes consist of two machine words, at least one bit is always
 // available for tags
