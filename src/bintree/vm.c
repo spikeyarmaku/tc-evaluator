@@ -164,7 +164,7 @@ void vm_run(struct VM* vm) {
 }
 
 // Serialize the VM's state into a byte array
-uint8_t* vm_serialize(struct VM* vm, size_t* size) {
+void* vm_serialize(struct VM* vm, size_t* size) {
     // Serialize the node stack directly, replacing the pointer addresses with
     // tagged indices. Maintain a translation table (possibly reuse the spine
     // stack for that purpose?) and rewrite addresses based on that table. 0 is
@@ -181,7 +181,7 @@ uint8_t* vm_serialize(struct VM* vm, size_t* size) {
     // - As a list of instructions
 }
 
-struct VM* vm_deserialize(uint8_t* data) {
+struct VM* vm_deserialize(void* data) {
     //
 }
 

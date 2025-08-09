@@ -53,8 +53,8 @@
 // 2 - a tree, representing a number, encoded as the 126-bit number itself
 // 3 - a tree encoded in binary, using 126 bits (App - 1, Leaf - 0)
 struct Node {
-    uintptr_t left;
-    uintptr_t right;
+    Index left;
+    Index right;
 };
 
 // Abuse the fact that these pointers are at least 4 bytes long, so the 2 least

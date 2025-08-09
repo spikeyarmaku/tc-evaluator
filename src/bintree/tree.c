@@ -29,7 +29,7 @@ static int _get_next_file_id();
 static struct Point _make_point(int x, int y);
 static struct DiagObj _make_obj(struct Point pos);
 static void _merge_trees(struct Node* tree0, struct Node* tree1);
-static struct Node* _recycle(struct Tree* tree);
+static struct Node* _search_free_space(struct Tree* tree);
 
 static void _svg_template(char* file_buf, char* content_buf, int w, int h);
 static void _node_template(char* buf, uintptr_t value, struct DiagObj obj,
@@ -44,40 +44,27 @@ static void _pretty_print_subtree(struct Node* node);
 
 // -----------------------------------------------------------------------------
 
-struct Tree* tree_make() {
-    struct Tree* tree = malloc(sizeof(struct Tree));
-    tree->nodes = node_stack_make();
-    tree->root = NULL;
-    tree->freelist = freelist_stack_make();
+struct Tree tree_make() {
+    struct Tree tree;
+    tree.nodes = node_buffer_make();
     return tree;
 }
 
-// Allocate space for a new node on the stack
-struct Node* alloc_node(struct Tree* tree)
-{
-    struct Node* new_node = node_stack_alloc(tree->nodes);
-    return new_node;
-}
-
 // Either allocate or reuse space for a new node, and fill it with data
-struct Node* add_node(struct Tree* tree, const struct Node* left,
-    const struct Node* right)
-{
-    struct Node* new_node = _recycle(tree);
+void add_node(struct Tree* tree, Index left, Index right) {
+    Index new_node = _search_free_space(tree);
 
-    if (new_node == NULL) {
-        new_node = alloc_node(tree);
+    if (new_node == INVALID_INDEX) {
+        node_buffer_push(&tree->nodes, left, right);
+    } else {
+        set_left_right(new_node, left, right);
     }
-
-    set_left_right(new_node, left, right);
     return new_node;
 }
 
 // Copy a node to another address, creating an indirection node if necessary
 // At the end of the operation, `old_addr` should be equal to `*new_addr`
-void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
-    struct Node** new_addr)
-{
+void duplicate_node_to(struct Tree* tree, Index old_addr, Index* new_addr) {
     // assert(old_addr != NULL);
 
     // Check if the node is a leaf
@@ -102,7 +89,7 @@ void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
 }
 
 // When a subtree is deleted, its root is marked in the freelist stack
-void delete_node(struct Tree* tree, struct Node* node_to_delete) {
+void delete_node(struct Tree* tree, Index node_to_delete) {
     if (is_leaf(node_to_delete) == TRUE) {
         // Node is already just a leaf, nothing to do
         return;
@@ -115,16 +102,7 @@ void delete_node(struct Tree* tree, struct Node* node_to_delete) {
         return;
     }
 
-    freelist_stack_push(tree->freelist, node_to_delete);
-}
-
-void print_empty(int ind, struct Tree* tree) {
-    if (tree->freelist == NULL) {
-        debug_indent(ind, "No free nodes.\n");
-    } else {
-        debug_indent(ind, "Free nodes:\n");
-        freelist_stack_print(ind, tree->freelist);
-    }
+    // freelist_stack_push(tree->freelist, node_to_delete);
 }
 
 void print_root(int ind, struct Node* tree) {
@@ -429,35 +407,35 @@ static void _merge_trees(struct Node* tree0, struct Node* tree1) {
 
 // Take a tree from the freelist, break off its children, store them in the
 // freelist, and return the root node's address
-static struct Node* _recycle(struct Tree* tree) {
-    struct Node* result = freelist_stack_pop(tree->freelist);
-    if (result != NULL) {
-        // Indirs are not allowed in the freelist
-        assert(get_tag_left(result) != Indir);
+static struct Node* _search_free_space(struct Tree* tree) {
+    // struct Node* result = freelist_stack_pop(tree->freelist);
+    // if (result != NULL) {
+    //     // Indirs are not allowed in the freelist
+    //     assert(get_tag_left(result) != Indir);
 
-        struct Node* left = get_left(result);
-        if (left != NULL) {
-            if (get_tag_left(left) == Indir) {
-                if (is_zero_ref(left) == FALSE) {
-                    decr_ref(left);
-                }
-            } else {
-                freelist_stack_push(tree->freelist, left);
-            }
-        }
+    //     struct Node* left = get_left(result);
+    //     if (left != NULL) {
+    //         if (get_tag_left(left) == Indir) {
+    //             if (is_zero_ref(left) == FALSE) {
+    //                 decr_ref(left);
+    //             }
+    //         } else {
+    //             freelist_stack_push(tree->freelist, left);
+    //         }
+    //     }
 
-        struct Node* right = get_right(result);
-        if (right != NULL) {
-            if (get_tag_left(right) == Indir) {
-                if (is_zero_ref(right) == FALSE) {
-                    decr_ref(right);
-                }
-            } else {
-                freelist_stack_push(tree->freelist, right);
-            }
-        }
-    }
-    return result;
+    //     struct Node* right = get_right(result);
+    //     if (right != NULL) {
+    //         if (get_tag_left(right) == Indir) {
+    //             if (is_zero_ref(right) == FALSE) {
+    //                 decr_ref(right);
+    //             }
+    //         } else {
+    //             freelist_stack_push(tree->freelist, right);
+    //         }
+    //     }
+    // }
+    // return result;
 }
 
 static void _draw_tree(char* node_buf, char* path_buf, uintptr_t node,

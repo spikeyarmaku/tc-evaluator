@@ -6,27 +6,19 @@
 
 #include "global.h"
 #include "node.h"
-#include "stack.h"
+#include "buffer.h"
 
 #include <string.h>
 
 struct Tree {
-    struct Node* root;
-
     // Nodes of the tree
-    struct Stack* nodes;
-
-    // A collection of nodes that can be reused
-    struct Stack* freelist;
+    struct Buffer nodes;
 };
 
-struct Tree* tree_make();
+struct Tree tree_make   ();
 
-// Allocate space for a node
-struct Node* alloc_node(struct Tree* tree);
 // Add a node to a free empty node
-struct Node* add_node(struct Tree* tree, const struct Node* left,
-    const struct Node* right);
+void        add_node    (struct Tree* tree, Index left, Index right);
 
 // Create an indirection node
 void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
