@@ -12,8 +12,8 @@ int main() {
     struct VM vm = vm_make(tree);
     vm_run(&vm);
 
-    tree_print(tree);
-    tree_debug_print(tree);
+    tree_print(vm.tree);
+    tree_debug_print(vm.tree);
     return 0;
 }
 

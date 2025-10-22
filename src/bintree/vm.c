@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-static void     _apply_rules        (struct VM* vm, Index top_index,
+static void     _apply_rules        (struct Tree* tree, Index top_index,
     Node top_node, Index left_child_index, Node left_child,
     Index right_child_index, Node right_child);
 
@@ -121,7 +121,7 @@ enum StepState vm_step(struct VM* vm) {
                 tree_set_node(&vm->tree, top_index, top_node);
 
                 _spine_print(vm->spine);
-                tree_debug_print(vm->tree);
+                // tree_debug_print(vm->tree);
                 return Running;
                 break;
             }
@@ -165,7 +165,7 @@ enum StepState vm_step(struct VM* vm) {
                 break;
             }
             case Fork: {
-                _apply_rules(vm, top_index, top_node, left_child_index,
+                _apply_rules(&vm->tree, top_index, top_node, left_child_index,
                     left_child, right_child_index, right_child);
                 break;
             }
@@ -205,21 +205,21 @@ struct VM vm_deserialize(void* data) {
 
 // -------------------------------- INTERNAL METHODS ---------------------------
 
-static void _apply_rules(struct VM* vm, Index top_index, Node top_node,
+static void _apply_rules(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child, Index right_child_index,
     Node right_child)
 {
     if (node_get_left_child_index(left_child) == 0) {
         // Rule 1
-        _apply_rule_1(&vm->tree, top_index, top_node, left_child_index, left_child,
+        _apply_rule_1(tree, top_index, top_node, left_child_index, left_child,
             right_child_index);
     } else {
         Index left_of_left_index = node_get_left_child_index(left_child);
-        Node left_of_left_child = tree_get_node(vm->tree, left_of_left_index);
+        Node left_of_left_child = tree_get_node(*tree, left_of_left_index);
         switch (node_get_tag(left_of_left_child)) {
             case Stem: {
                 // Rule 2
-                _apply_rule_2(&vm->tree, top_index, top_node, left_child_index,
+                _apply_rule_2(tree, top_index, top_node, left_child_index,
                     left_child, right_child_index);
                 break;
             }
@@ -227,20 +227,20 @@ static void _apply_rules(struct VM* vm, Index top_index, Node top_node,
                 // Rule 3a-3c
                 if (right_child_index == 0) {
                     // Rule 3a
-                    _apply_rule_3a(&vm->tree, top_index, top_node, left_child_index,
+                    _apply_rule_3a(tree, top_index, top_node, left_child_index,
                         left_child);
                 } else {
                     switch (node_get_tag(right_child)) {
                         case Stem: {
                             // Rule 3b
-                            _apply_rule_3b(&vm->tree, top_index, top_node,
+                            _apply_rule_3b(tree, top_index, top_node,
                                 left_child_index, left_child, right_child_index,
                                 right_child);
                             break;
                         }
                         case Fork: {
                             // Rule 3c
-                            _apply_rule_3c(&vm->tree, top_index, top_node,
+                            _apply_rule_3c(tree, top_index, top_node,
                                 left_child_index, left_child, right_child_index,
                                 right_child);
                             break;
