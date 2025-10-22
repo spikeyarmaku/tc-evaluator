@@ -5,7 +5,7 @@ pkgs.mkShell {
     # gcc
     pkgs.gcc
     pkgs.gdb
-    pkgs.glibc
+    # pkgs.glibc
 
     # haskell
     pkgs.ghc
@@ -14,5 +14,8 @@ pkgs.mkShell {
 
     pkgs.valgrind
     pkgs.libsForQt5.kcachegrind
+
+    pkgs.clang
+    pkgs.cmake
   ];
 }
