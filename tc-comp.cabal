@@ -20,7 +20,7 @@ executable tc-comp
     main-is:          Main.hs
     other-modules:    Tree, Eval, Inet, Global
     -- other-extensions:
-    build-depends:    base ^>=4.18.2.1,
+    build-depends:    base,
                       QuickCheck,
                       process
     hs-source-dirs:   src

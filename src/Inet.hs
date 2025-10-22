@@ -3,7 +3,9 @@ module Inet where
 import Data.Word (Word8, Word64)
 
 import Tree (BinTree(..), getBinTreeChildren)
-import Global (inetBase)
+
+inetBase :: String
+inetBase = "src/inet/runtime.c"
 
 data Agent = L | S | F | E | D | A | T | Q | I deriving (Eq, Show)
 data PortNum = P0 | P1 | P2 | P3 | P4 | Main deriving (Eq)

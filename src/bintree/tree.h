@@ -6,35 +6,30 @@
 
 #include "global.h"
 #include "node.h"
-#include "buffer.h"
+#include "array.h"
 
 #include <string.h>
 
 struct Tree {
     // Nodes of the tree
-    struct Buffer nodes;
+    struct Array nodes;
+    size_t free_space_count;
+    Index search_start; // Entries before this are 100% non-empty
 };
 
-struct Tree tree_make   ();
+struct Tree tree_make               ();
+Index       tree_add_node           (struct Tree* tree, enum NodeTag tag,
+    Index left_child_index, Index right_child_index);
+Node        tree_get_node           (struct Tree tree, Index index);
+void        tree_set_node           (struct Tree* tree, Index index, Node node);
+void        tree_incr_refcount      (struct Tree* tree, Index index);
+void        tree_decr_refcount      (struct Tree* tree, Index index);
+void        tree_delete_children    (struct Tree* tree, Index index);
+Index       tree_search_free_spaces (struct Tree tree, size_t size,
+    bool_t* error);
 
-// Add a node to a free empty node
-void        add_node    (struct Tree* tree, Index left, Index right);
-
-// Create an indirection node
-void duplicate_node_to(struct Tree* tree, struct Node* old_addr,
-    struct Node** new_addr);
-
-// Free spaces are stored in a linked list, where every entry points to a tree
-// to be deleted later as its left child, and the next free entry as its right
-// child.
-void delete_node(struct Tree* tree, struct Node* node_to_delete);
-
-void print_empty(int ind, struct Tree* tree);
-void print_root(int ind, struct Node* tree);
-// Print a textual representation of a tree (e.g. "ttt(tt)")
-void pretty_print(struct Node* root);
-void print_tree(int ind, struct Tree* tree);
-
-void draw_tree(char* filename, struct Tree* tree);
+size_t      tree_get_node_count     (struct Tree tree);
+void        tree_print              (struct Tree tree);
+void        tree_debug_print        (struct Tree tree);
 
 #endif

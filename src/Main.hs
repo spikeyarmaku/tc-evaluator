@@ -6,18 +6,21 @@ import System.IO (hGetContents, openFile, IOMode (..), hClose, hSetBuffering,
 import System.Process (readProcess, callCommand)
 import Control.Monad (unless, forM_, when)
 
-import Tree (parse, treeToExpr, printExprAsTree, Tree, Expr(..),
+import Tree (parseTree, treeToExpr, printExprAsTree, Tree, Expr(..),
     printExprWithParens, treeToBinTree, BinTree (Node, BinApp), binTreeToTree,
-    size, exprToTree)
+    size, exprToTree, Program (Fork, Stem, Leaf))
 import Eval (isNormal, step, eval, evalWithRules, evalWithMainRulesN, Rule(..))
 import Inet (compileInet)
-import Global (binTreeBase)
-import Data.List (intercalate, nub, isInfixOf)
+import Data.List (intercalate, nub, isInfixOf,)
 import System.Exit (exitSuccess, exitFailure)
 import Data.Tuple (swap)
 import Data.Char (isSpace)
 
-data Command = Interpret | Compile Backend | DisplayHelp deriving (Eq, Show)
+import Debug.Trace (trace)
+
+data InterpretMode = Evaluate | ShowRules deriving (Eq, Show)
+data Command = Interpret InterpretMode | Compile Backend | DisplayHelp
+    deriving (Eq, Show)
 data Backend = InteractionNet | BinTree deriving (Eq, Show)
 
 data Config =
@@ -38,7 +41,8 @@ helpMessage progName = unlines
     , progName ++ " input_file -cN [output_file]"
     , ""
     , "FLAGS:"
-    , "-i             Use the interpreter to evaluate the input file"
+    , "-i[r]          Use the interpreter to evaluate the input file"
+    , "               r - show the applied rules"
     , "-cN            Compile with a backend:"
     , "               -ci - interaction net backend"
     , "               -cb - binary tree backend"
@@ -52,7 +56,8 @@ parseFlags = foldl updateFlag defaultConfig
         | f `elem` ["-h", "--help"] = c {command = DisplayHelp}
         | f == "-ci" = c {command = Compile InteractionNet}
         | f == "-cb" = c {command = Compile BinTree}
-        | f == "-i"  = c {command = Interpret}
+        | f == "-ir" = c {command = Interpret ShowRules}
+        | f == "-i"  = c {command = Interpret Evaluate}
         | otherwise = if inputFile c == ""
                         then c {inputFile = f} else c {outputFile = f}
 
@@ -84,14 +89,17 @@ debugEval (DebugPrintConfig t ls) e = do
             in  unless isLimited (print rs) >>
                     debugEval (DebugPrintConfig t ls') e'
 
-interpret :: Expr -> IO ()
-interpret = putStrLn . printExprAsTree . eval
+interpret :: InterpretMode -> Expr -> IO ()
+interpret Evaluate = putStrLn . printExprAsTree . eval
+interpret ShowRules
+    = print . fmap printExprAsTree . swap . fmap (show . filter (/= NoRule))
+    . evalWithRules
 
 withTree :: FilePath -> (Tree -> IO ()) -> IO ()
 withTree fp action = do
     h <- openFile fp ReadMode
     f <- hGetContents h
-    forM_ (parse f) action
+    forM_ (parseTree f) action
     hClose h
 
 main :: IO ()
@@ -118,15 +126,14 @@ main = do
     prgName <- getProgName
     case command config of
         DisplayHelp ->  putStrLn $ helpMessage prgName
-        Interpret -> withTree (inputFile config) $ interpret . treeToExpr
+        Interpret mode -> withTree (inputFile config) $
+            interpret mode . treeToExpr
         Compile InteractionNet -> withTree (inputFile config) $
             compileInet (outputFile config) . treeToBinTree
-        Compile BinTree -> withTree (inputFile config) $ \t ->  do
-            let tree = treeToBinTree t
-            print . showEvalPathTree . binTreeToTree $ tree
-            compileBinTree (outputFile config) tree
+        Compile BinTree -> withTree (inputFile config) $ \t -> do
+            compileBinTree (outputFile config) . treeToExpr $ t
 
-checkProgram :: BinTree -> IO ()
+checkProgram :: Expr -> IO ()
 checkProgram t = do
     let inp_file = "compare.txt"
         outp_file = "compare.c"
@@ -135,11 +142,11 @@ checkProgram t = do
         strip (c:cs)
             | isSpace c = strip cs
             | otherwise = c : strip cs
-    writeFile inp_file (show $ binTreeToTree t)
+    writeFile inp_file (show $ exprToTree t)
     compileBinTree (outputFile config) t
     callCommand "./c_cmp.sh"
-    let i_res = printExprAsTree $ eval (treeToExpr $ binTreeToTree t)
-    putStrLn $ show (binTreeToTree t) ++ " -> " ++  i_res
+    let i_res = printExprAsTree $ eval t
+    putStrLn $ show (exprToTree t) ++ " -> " ++  i_res
     readProcess "./compare.out" [] "" >>= \result -> do
         unless (strip result `isInfixOf` i_res) $ do
             putStrLn $ "MISMATCH: " ++ show result
@@ -158,7 +165,7 @@ showEvalPathTree =
     show . swap . fmap exprToTree . swap . evalWithMainRulesN 20 . treeToExpr
 
 showEvalPathString :: String -> Maybe String
-showEvalPathString = fmap showEvalPathTree . parse
+showEvalPathString = fmap showEvalPathTree . parseTree
 
 -- Find the smallest trees that require at least 3 reduction rules to evaluate
 search :: IO ()
@@ -191,51 +198,46 @@ generateTree n =
 nthTree :: Int -> BinTree
 nthTree n = concatMap generateTree [0..] !! n
 
--- A ByteOffset is a pointer into the tree data, and an AppOffset is a pointer
--- into the app stack
-data Offset = ByteOffset Int | AppOffset Int deriving (Show)
+type NodeType = Int
+type NodeIndex = Int
+data NodeOp = NodeOp NodeType (NodeIndex, NodeIndex) deriving (Show)
 
-compileBinTree :: FilePath -> BinTree -> IO ()
-compileBinTree outFile binTree = do
-    let toStr Nothing = "NULL"
-        toStr (Just x) = "s" ++ show x
-        makeApp :: Maybe Int -> Maybe Int -> Maybe Int -> String
-        makeApp n left right =
-            "struct Node* " ++ toStr n ++ " = add_node(tree, " ++
-            toStr left ++ ", " ++ toStr right ++ ");"
-        -- Return the last variable number used and thecode generated so far
-        compile :: Int -> BinTree -> Maybe (Int, [String])
-        compile _ Node = Nothing
-        compile n (BinApp left right) =
-            case compile n left of
-                Nothing ->
-                    case compile n right of
-                        Nothing -> Just (n, [makeApp (Just n) Nothing Nothing])
-                        Just (nRight, codeRight) ->
-                            Just (nRight + 1,
-                                codeRight ++ [makeApp (Just $ nRight + 1)
-                                    Nothing (Just nRight)])
-                Just (nLeft, codeLeft) ->
-                    case compile (nLeft + 1) right of
-                        Nothing ->
-                            Just (nLeft + 1,
-                                codeLeft ++ [makeApp (Just $ nLeft + 1)
-                                    (Just nLeft) Nothing])
-                        Just (nRight, codeRight) ->
-                            Just (nRight + 1,
-                                    codeLeft ++ codeRight ++
-                                    [makeApp (Just $ nRight + 1)
-                                        (Just nLeft) (Just nRight)])
-        indent :: Int -> String -> String
+-- TODO top node shall be at index 0, the rest can be anywhere in any order
+compileBinTree :: FilePath -> Expr -> IO ()
+compileBinTree outFile expr = do
+    let indent :: Int -> String -> String
         indent n str = replicate n ' ' ++ str
-        toCode t =
-            case compile 0 t of
-                Nothing -> indent 4 "return NULL;"
-                Just (n, code) ->
-                    intercalate "\n" $ map (indent 4) $
-                        code ++ ["return " ++ toStr (Just n) ++ ";"]
-        resultApp =
-            "struct Node* init_program(struct Tree* tree) {\n" ++
-            toCode binTree ++ "\n}\n"
-    baseStr <- readFile binTreeBase
-    writeFile outFile $ baseStr ++ resultApp
+        addNode :: NodeType -> (NodeIndex, NodeIndex) -> String
+        addNode nodeType (leftIndex, rightIndex)
+            = "tree_add_node(tree, "
+            ++ intercalate ", " [["Stem", "Fork", "App"] !! nodeType
+                                , show leftIndex, show rightIndex ] ++ ");"
+        makeIndices :: Int -> Expr -> Expr -> (Int, (Int, Int))
+        makeIndices i (Prg Leaf) (Prg Leaf) = (i - 1, (0, 0))
+        makeIndices i (Prg Leaf) _ = (i, (0, i))
+        makeIndices i _ (Prg Leaf) = (i, (i, 0))
+        makeIndices i _ _ = (i + 1, (i, i + 1))
+        -- Return the last variable number used and the code generated so far
+        -- compile first_available_index expr -> (index_of_top_node, operations)
+        compile :: Int -> [Expr] -> [String]
+        compile _ [] = []
+        compile c (e:es) = -- trace (show c ++ ": " ++ show (e:es)) $
+            case e of
+                App e0 e1 ->
+                    let (c', is) = makeIndices (c + 1) e0 e1
+                    in  addNode 2 is : compile c' (es ++ [e0, e1])
+                Prg (Fork p0 p1) ->
+                    let (c', is) = makeIndices (c + 1) (Prg p0) (Prg p1)
+                    in  addNode 1 is : compile c' (es ++ [Prg p0, Prg p1])
+                Prg (Stem p0) ->
+                    let (c', is) = makeIndices (c + 1) (Prg p0) (Prg Leaf)
+                    in  addNode 0 is : compile c' (es ++ [Prg p0])
+                Prg Leaf -> compile c es
+        code = map (indent 4) $ compile 0 [expr]
+        resultApp
+            =  "#include \"../main.h\"\n\n"
+            ++ "void init_program(struct Tree* tree) {\n"
+            ++ intercalate "\n" code ++ "\n}\n"
+    writeFile outFile resultApp
+    print expr
+    print $ compile 0 [expr]

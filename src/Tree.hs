@@ -52,13 +52,13 @@ exprToTree (App a0 a1) =
     in  Tree (tree0 ++ [tree1])
 
 applyExpr :: Expr -> Expr -> Expr
-applyExpr (Prg p0) (Prg p1) = applyProgram p0 p1
-applyExpr (Prg p0) (App a0 a1) = App (Prg p0) (App a0 a1)
-applyExpr (App a0 a1) (Prg p0) = App (App a0 a1) (Prg p0)
-applyExpr (App a0 a1) (App a2 a3) = App (App a0 a1) (App a2 a3)
+applyExpr    (Prg p0)     (Prg p1)  = applyProgram p0 p1
+applyExpr    (Prg p0)   a@(App _ _) = App (Prg p0) a
+applyExpr  a@(App _ _)    (Prg p0)  = App a (Prg p0)
+applyExpr a0@(App _ _) a1@(App _ _) = App a0 a1
 
 applyProgram :: Program -> Program -> Expr
-applyProgram (Fork p0 p1) p = App (Prg (Fork p0 p1)) (Prg p)
+applyProgram f@(Fork _ _) p = App (Prg f) (Prg p)
 applyProgram (Stem p0) p = Prg (Fork p0 p)
 applyProgram Leaf p = Prg (Stem p)
 
@@ -117,8 +117,8 @@ getBinTreeChildren :: BinTree -> [BinTree]
 getBinTreeChildren Node = []
 getBinTreeChildren (BinApp a0 a1) = getBinTreeChildren a0 ++ [a1]
 
-parse :: String -> Maybe Tree
-parse = fst . go [] Nothing
+parseTree :: String -> Maybe Tree
+parseTree = fst . go [] Nothing
     where
     go :: [Maybe Tree] -> Maybe Tree -> String -> (Maybe Tree, String)
     go [] expr "" = (expr, "")
@@ -176,10 +176,10 @@ stats = go (zip [minBound..] (repeat 0))
 -- and it is hard to get it right
 parseTest :: String -> Bool
 parseTest text =
-    case parse text of
+    case parseTree text of
         Nothing -> True
         Just t0 ->
-            case parse (show t0) of
+            case parseTree (show t0) of
                 Nothing -> False
                 Just t1 -> show t0 == show t1
 
@@ -187,10 +187,10 @@ parseTest text =
 -- text
 printTest :: String -> Bool
 printTest text =
-    case parse text of
+    case parseTree text of
         Nothing -> True
         Just t0 ->
-            case parse (printExprAsTree . treeToExpr $ t0) of
+            case parseTree (printExprAsTree . treeToExpr $ t0) of
                 Nothing -> False
                 Just t1 -> printExprAsTree (treeToExpr t0) ==
                             printExprAsTree (treeToExpr t1)

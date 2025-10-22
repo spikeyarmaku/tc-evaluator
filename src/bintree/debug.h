@@ -1,19 +1,22 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-// #define DEBUG_PRINTS
+#define DEBUG_PRINTS
 // #define OUTPUT_DIAGRAMS
 
 #ifdef DEBUG_PRINTS
-#include <stdarg.h>
+#include <stdarg.h>     // vsprintf
 #include <stdio.h>
-#include <inttypes.h>
+#include <stdint.h>     // uint_least64_t
+#include <inttypes.h>   // PRIuPTR
 #endif
 
 #include <limits.h>
 
+#include "global.h"
+
 void debug(const char* s, ...);
 void debug_indent(int indent_amount, const char* s, ...);
-void printbits(unsigned long n);
+void sprintbits(char* buffer, uint_least64_t n, bool_t sep);
 
 #endif

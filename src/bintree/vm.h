@@ -6,10 +6,15 @@
 
 enum StepState {Done, Running};
 
-struct VM*      vm_make (struct Tree* tree);
+struct VM {
+    struct Tree tree; // Node array
+    struct Array spine; // Index array
+};
+
+struct VM       vm_make (struct Tree tree);
 enum StepState  vm_step (struct VM* vm);
 void            vm_run  (struct VM* vm);
-void*           vm_serialize    (struct VM* vm, size_t* size);
-struct VM*      vm_deserialize  (void* data);
+void*           vm_serialize    (struct VM vm, size_t* size);
+struct VM       vm_deserialize  (void* data);
 
 #endif

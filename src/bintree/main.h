@@ -1,5 +1,5 @@
-#ifndef RUNTIME_H
-#define RUNTIME_H
+#ifndef MAIN_H
+#define MAIN_H
 
 #include <stdio.h>
 #include <stdint.h>
@@ -7,12 +7,11 @@
 #include <assert.h>
 
 #include "tree.h"
-#include "stack.h"
 #include "vm.h"
 #include "debug.h"
 
 // This is going to be defined by the transpiler
-struct Node* init_program(struct Tree* tree);
+void init_program(struct Tree* tree);
 
 int main();
 

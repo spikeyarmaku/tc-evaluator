@@ -8,99 +8,53 @@
 #include "global.h"
 #include "debug.h"
 
-// The tree is stored as a series of Apps. So FLL would be stored as
-//     A
-//    / \
-//   A   L
-//  / \
-// L   L
+// The tree is stored as a series of Nodes. A node is a 64-bit integer value.
+// The first 2 bits act as a tag (Special, Stem, Fork or Application). The next
+// 10 bits are the node's reference count, and the remaining 2 * 24 bits are the
+// indices of its two children. Leaf nodes are not stored, as they don't have
+// any children, and they contain no useful information - all leaf nodes are the
+// same. They are represented by the 0 index. Special nodes have subtypes: one
+// is the indirection node, which is useful when the parent node's child index
+// has to be changed (e.g. with rules 1 and 3a).
 
-// A node is a 128-bit integer value. The first 64 bits point to the first
-// child, and the other 64 bits point to the second child. If a pointer is
-// NULL, that child is a leaf, otherwise it is an application. The first half
-// uses a tag bit. (If there is a need for up to 16 different values, the second
-// half can be used as well.)
-
-// The node stack consists of nodes.
-// There are also two distinct markers, one is pointing to the first empty
-// node, and the other to the last. This is to manage free space efficiently.
-// Whenever a node is deleted, the last empty space (pointed to by the end
-// marker) is updated to point to the newly deleted node, and then the end
-// marker is updated to point to this node as well. That way, eventually each
-// empty node would point to the next one, forming a singly linked list. Adding
-// and removing elements to it are constant operations.
-
-// Nodes can be:
-// - App
-//      These contain references to two other nodes (this is the most frequent
-//      type)
-// - Indirection
-//      They contain only one reference to a node, and a refcount to that node.
-//      It is used for duplicated nodes
+// Further node type ideas
 // - Number
-//      They contain a 126-bit natural number, that can be incrementally
+//      They contain a 32-bit natural number, that can be incrementally
 //      unpacked into a tree
 // - Compressed
-//      They are trees that are represented as bits, where 1 is an App node, and
-//      0 is a leaf. They can also be incrementally unpacked into a tree, but it
-//      could be quite slow. Recommended for low-memory environments
+//      They are trees that are represented as bits, where every two bits is a
+//      node (0 - leaf, 1 - stem, 2 - fork, 3- app). They can also be
+//      incrementally unpacked into a tree, but it could be quite slow.
+//      Recommended for low-memory environments
 
-// ------------------------------------ NODE ----------------------------------
-// The least significant 2 bits of `left` is a tag:
-// 0 - regular pointer to two children
-// 1 - reference counted pointer, `left` containing the ref count, `right`
-//     containing the pointer to the child
-// 2 - a tree, representing a number, encoded as the 126-bit number itself
-// 3 - a tree encoded in binary, using 126 bits (App - 1, Leaf - 0)
-struct Node {
-    Index left;
-    Index right;
+// See node.c for details and examples
+
+typedef uint_least64_t Node;
+
+enum NodeTag {
+    Indirection = 0,
+    Stem        = 1,
+    Fork        = 2,
+    App         = 3
 };
 
-// Abuse the fact that these pointers are at least 4 bytes long, so the 2 least
-// significant bits are always 0. These tags are stored there.
-// TODO At this point only App and Indir are considered. Need to incorporate
-// the other types.
-enum NodeTagLeft {
-    App     = 0,
-    
-    // Indir could be made to mean multiple things (and renamed to something
-    // else that reflects this) by adding additional tags to it. This could be
-    // used to represent numbers, or anything else.
-    Indir   = 1
-};
+Node            node_make                   (enum NodeTag tag, size_t refcount,
+    Index left, Index right);
+Index           node_get_indir              (Node node);
+void            node_set_indir              (Node* node, Index index);
+bool_t          node_is_empty               (Node node);
+uint32_t        node_get_refcount           (Node node);
+void            node_set_refcount           (Node* node, uint32_t refcount);
+void            node_incr_refcount          (Node* node);
+void            node_decr_refcount          (Node* node);
+enum NodeTag    node_get_tag                (Node node);
+enum SpecialNodeTag node_get_special_tag    (Node node);
+void            node_set_tag                (Node* node, enum NodeTag tag);
+Index           node_get_left_child_index   (Node node);
+Index           node_get_right_child_index  (Node node);
+void            node_set_left_child_index   (Node* node, Index left);
+void            node_set_right_child_index  (Node* node, Index right);
 
-enum NodeTagRight {
-    Unreduced   = 0,
-    Reduced     = 1
-};
-
-enum NodeTagLeft    get_tag_left    (const struct Node* node);
-void                set_tag_left    (struct Node* node, enum NodeTagLeft tag);
-enum NodeTagRight   get_tag_right   (const struct Node* node);
-void                set_tag_right   (struct Node* node, enum NodeTagRight tag);
-
-struct Node*    get_left                (const struct Node* node);
-struct Node*    get_right               (const struct Node* node);
-struct Node**   get_left_addr           (const struct Node* node);
-struct Node**   get_right_addr          (const struct Node* node);
-struct Node**   get_indir_child_addr    (const struct Node* node);
-struct Node*    get_indir_child         (const struct Node* node);
-struct Node*    deref_node_addr         (struct Node** node_addr);
-void            set_value_at_node_addr  (struct Node** node_addr,
-    struct Node* value);
-
-void    set_left        (struct Node* node, const struct Node* left);
-void    set_right       (struct Node* node, const struct Node* right);
-void    set_left_right  (struct Node* node, const struct Node* left,
-    const struct Node* right);
-bool_t  is_leaf         (const struct Node* node);
-
-void            set_indir_to    (struct Node* node,
-    const struct Node* new_node);
-bool_t          is_zero_ref     (const struct Node* node);
-void            incr_ref        (struct Node* node);
-void            decr_ref        (struct Node* node);
-struct Node*    unset_indir     (struct Node* node);
+int             node_print                  (char* buffer, Node node);
 
 #endif

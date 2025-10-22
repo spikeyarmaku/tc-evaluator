@@ -24,16 +24,32 @@ void debug_indent(int indent_amount, const char* s, ...) {
 }
 
 // Source: https://stackoverflow.com/questions/52845040/printing-a-long-in-binary-64-bit-representation
-void printbits(unsigned long n){
-    #ifdef DEBUG_PRINTS
-    unsigned long i; 
-    i = 1UL<<(sizeof(n)*CHAR_BIT-1);
-    while(i>0){
-         if(n&i)
-              printf("1"); 
-         else 
-              printf("0"); 
-         i >>= 1;
+// buffer: char* array of at least 65 (or 72 if `sep` is true) characters (with
+// trailing 0 included)
+// n: the number to be printed
+// sep: should groups of 8 bits be separated by space
+void sprintbits(char* buffer, uint_least64_t n, bool_t sep) {
+#ifdef DEBUG_PRINTS
+    uint8_t base_max = sizeof(n) * CHAR_BIT;
+    uint8_t base = 0;
+    uint8_t cursor = 0;
+    uint_least64_t i;
+    bool_t trailing = TRUE;
+    while(base < base_max) {
+        if (sep == TRUE && base % 8 == 0 && base != 0) {
+            buffer[cursor] = ' ';
+            cursor++;
+        }
+        i = (uint_least64_t)1 << base;
+        if(n & i) {
+            buffer[cursor] = '1';
+        }
+        else {
+            buffer[cursor] = '0';
+        }
+        base++;
+        cursor++;
     }
-    #endif
+    buffer[cursor] = 0;
+#endif
 }
