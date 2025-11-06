@@ -1,12 +1,12 @@
 // Node structure:
 
 // Bits
-// 0 1 | 2 3 4 ... 15 16 | 17 18 19 ... 32 33 | 34 35 36 ... 63 64
+// 0 1 | 2 3 4 ... 17 18 | 19 20 21 ... 40 41 | 42 43 44 ... 63 64
 // |     |                  |                   |
-// |     |                  |                   +--- 24 bits: address of
+// |     |                  |                   +--- 23 bits: address of
 // |     |                  |                        second child
-// |     |                  +--- 24 bits: address of first child
-// |     +--- 14 bits: Refcount
+// |     |                  +--- 23 bits: address of first child
+// |     +--- 16 bits: Refcount
 // +--- 2 bits: TAG (0 - special, 1 - stem, 2 - fork, 3 - app)
 
 // An example for a stem node whose child is located at index 5:
@@ -49,14 +49,14 @@
 
 #define TAG_MASK_SHIFT 0
 #define REFCOUNT_MASK_SHIFT 2
-#define LEFT_CHILD_MASK_SHIFT 16
-#define RIGHT_CHILD_MASK_SHIFT 40
+#define LEFT_CHILD_MASK_SHIFT 18
+#define RIGHT_CHILD_MASK_SHIFT 41
 
 #define TAG_MASK (((uint_least64_t)1<<2) - 1)
-#define REFCOUNT_MASK ((((uint_least64_t)1<<14) - 1) << REFCOUNT_MASK_SHIFT)
-#define LEFT_CHILD_MASK ((((uint_least64_t)1<<24) - 1) << LEFT_CHILD_MASK_SHIFT)
+#define REFCOUNT_MASK ((((uint_least64_t)1<<16) - 1) << REFCOUNT_MASK_SHIFT)
+#define LEFT_CHILD_MASK ((((uint_least64_t)1<<23) - 1) << LEFT_CHILD_MASK_SHIFT)
 #define RIGHT_CHILD_MASK \
-    ((((uint_least64_t)1<<24) - 1) << RIGHT_CHILD_MASK_SHIFT)
+    ((((uint_least64_t)1<<23) - 1) << RIGHT_CHILD_MASK_SHIFT)
 
 // ------------------------------ PUBLIC METHODS ------------------------------
 
