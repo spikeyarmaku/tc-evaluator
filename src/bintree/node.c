@@ -52,11 +52,13 @@
 #define LEFT_CHILD_MASK_SHIFT 18
 #define RIGHT_CHILD_MASK_SHIFT 41
 
+#define REFCOUNT_LIMIT (((uint_least64_t)1<<16) - 1)
+#define CHILD_LIMIT (((uint_least64_t)1<<23) - 1)
+
 #define TAG_MASK (((uint_least64_t)1<<2) - 1)
-#define REFCOUNT_MASK ((((uint_least64_t)1<<16) - 1) << REFCOUNT_MASK_SHIFT)
-#define LEFT_CHILD_MASK ((((uint_least64_t)1<<23) - 1) << LEFT_CHILD_MASK_SHIFT)
-#define RIGHT_CHILD_MASK \
-    ((((uint_least64_t)1<<23) - 1) << RIGHT_CHILD_MASK_SHIFT)
+#define REFCOUNT_MASK (REFCOUNT_LIMIT << REFCOUNT_MASK_SHIFT)
+#define LEFT_CHILD_MASK (CHILD_LIMIT << LEFT_CHILD_MASK_SHIFT)
+#define RIGHT_CHILD_MASK (CHILD_LIMIT << RIGHT_CHILD_MASK_SHIFT)
 
 // ------------------------------ PUBLIC METHODS ------------------------------
 
@@ -88,7 +90,7 @@ void node_set_refcount(Node* node, uint32_t refcount) {
 }
 
 void node_incr_refcount(Node* node) {
-    if (node_get_refcount(*node) == -1) {
+    if (node_get_refcount(*node) == REFCOUNT_LIMIT) {
         fail("PANIC! node_incr_refcount: Refcount overflow\n");
     }
     *node += (1 << REFCOUNT_MASK_SHIFT);
