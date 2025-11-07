@@ -7,16 +7,19 @@ include(CTest)
 enable_testing()
 
 option(RUN_CABAL "Run cabal to regenerate the tree code" ON)
-set(INPUT_FILE "tree.txt")
-set(OUTPUT_FILE "tc.out")
+set(INPUT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tree.txt")
 
-# Step 1: Run cabal to generate init.c
+# Step 1: Run cabal to generate init.h
+set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/bintree")
+set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/src/bintree")
+set(GENERATED_C_FILE "${GENERATED_DIR}/init.h")
 if(RUN_CABAL)
-    set(GENERATED_C_FILE "init.c")
+    file(MAKE_DIRECTORY ${GENERATED_DIR})
     add_custom_command(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         OUTPUT ${GENERATED_C_FILE}
-        COMMAND cabal run tc-comp -- ${INPUT_FILE} -cb src/bintree/generated/${GENERATED_C_FILE}
-        COMMENT "Running cabal to generate src/bintree/generated/${GENERATED_C_FILE}"
+        COMMAND cabal run tc-comp -- ${INPUT_FILE} -cb ${GENERATED_C_FILE}
+        COMMENT "Running cabal to generate ${GENERATED_C_FILE}"
         DEPENDS ${INPUT_FILE}
         VERBATIM
     )
@@ -28,13 +31,14 @@ if (CMAKE_BUILD_TYPE STREQUAL Profiling)
 elseif(CMAKE_BUILD_TYPE STREQUAL Release)
     target_compile_options(TreeCalculusRuntime PRIVATE -O3 -flto)
 endif()
+target_include_directories(TreeCalculusRuntime PRIVATE ${GENERATED_DIR})
 target_sources(TreeCalculusRuntime
     PRIVATE
-    src/bintree/array.c
-    src/bintree/debug.c
-    src/bintree/node.c
-    src/bintree/vm.c
-    src/bintree/tree.c
-    src/bintree/generated/${GENERATED_C_FILE}
-    src/bintree/main.c
+    ${SRC_DIR}/array.c
+    ${SRC_DIR}/debug.c
+    ${SRC_DIR}/node.c
+    ${SRC_DIR}/vm.c
+    ${SRC_DIR}/tree.c
+    ${SRC_DIR}/main.c
+    ${GENERATED_C_FILE}
 )
