@@ -8,8 +8,8 @@ import Control.Monad (unless, forM_, when)
 
 import Tree (parseTree, treeToExpr, printExprAsTree, Tree, Expr(..),
     printExprWithParens, treeToBinTree, BinTree (Node, BinApp), binTreeToTree,
-    size, exprToTree, Program (Fork, Stem, Leaf))
-import Eval (isNormal, step, eval, evalWithRules, evalWithMainRulesN, Rule(..))
+    size, exprToTree, Program (Fork, Stem, Leaf), exprToCombs)
+import Eval (isNormal, step, eval, showEvalSteps, evalWithMainRulesN, Rule(..))
 import Inet (compileInet)
 import Data.List (intercalate, nub, isInfixOf,)
 import System.Exit (exitSuccess, exitFailure)
@@ -18,7 +18,7 @@ import Data.Char (isSpace)
 
 import Debug.Trace (trace)
 
-data InterpretMode = Evaluate | ShowRules deriving (Eq, Show)
+data InterpretMode = Evaluate | ShowIntermediary deriving (Eq, Show)
 data Command = Interpret InterpretMode | Compile Backend | DisplayHelp
     deriving (Eq, Show)
 data Backend = InteractionNet | BinTree deriving (Eq, Show)
@@ -41,8 +41,9 @@ helpMessage progName = unlines
     , progName ++ " input_file -cN [output_file]"
     , ""
     , "FLAGS:"
-    , "-i[r]          Use the interpreter to evaluate the input file"
-    , "               r - show the applied rules"
+    , "-i[s]          Use the interpreter to evaluate the input file"
+    , "               s - show the applied rules and the intermediary"
+    , "                   exporessions"
     , "-cN            Compile with a backend:"
     , "               -ci - interaction net backend"
     , "               -cb - binary tree backend"
@@ -56,7 +57,7 @@ parseFlags = foldl updateFlag defaultConfig
         | f `elem` ["-h", "--help"] = c {command = DisplayHelp}
         | f == "-ci" = c {command = Compile InteractionNet}
         | f == "-cb" = c {command = Compile BinTree}
-        | f == "-ir" = c {command = Interpret ShowRules}
+        | f == "-is" = c {command = Interpret ShowIntermediary}
         | f == "-i"  = c {command = Interpret Evaluate}
         | otherwise = if inputFile c == ""
                         then c {inputFile = f} else c {outputFile = f}
@@ -90,10 +91,13 @@ debugEval (DebugPrintConfig t ls) e = do
                     debugEval (DebugPrintConfig t ls') e'
 
 interpret :: InterpretMode -> Expr -> IO ()
-interpret Evaluate = putStrLn . printExprAsTree . eval
-interpret ShowRules
-    = print . fmap printExprAsTree . swap . fmap (show . filter (/= NoRule))
-    . evalWithRules
+interpret Evaluate e = putStrLn . printExprAsTree . eval $ e
+interpret ShowIntermediary e =
+    let printPair :: (String, String) -> String
+        printPair (str0, str1) = str0 ++ " " ++ str1
+    in  putStrLn . intercalate "\n" . (concatMap show (exprToCombs e) :)
+    . map   ( printPair . swap . fmap show . swap
+            . fmap (concatMap show . exprToCombs)) . showEvalSteps $ e
 
 withTree :: FilePath -> (Tree -> IO ()) -> IO ()
 withTree fp action = do
@@ -235,8 +239,7 @@ compileBinTree outFile expr = do
                 Prg Leaf -> compile c es
         code = map (indent 4) $ compile 0 [expr]
         resultApp
-            =  "#include \"../main.h\"\n\n"
-            ++ "void init_program(struct Tree* tree) {\n"
+            =  "void init_program(struct Tree* tree) {\n"
             ++ intercalate "\n" code ++ "\n}\n"
     writeFile outFile resultApp
     print expr

@@ -30,8 +30,8 @@ evalWithRulesN n e = go n (e, [])
     go :: Int -> (Expr, [Rule]) -> (Expr, [Rule])
     go 0 x = x
     go n (expr, rules) =
-        let (expr', rules') = step expr
-            allRules = rules ++ rules'
+        let (expr', rule') = step expr
+            allRules = rules ++ [rule']
         in  if isNormal expr'
                 then (expr', allRules)
                 else go (n - 1) (expr', allRules)
@@ -39,26 +39,36 @@ evalWithRulesN n e = go n (e, [])
 evalWithRules :: Expr -> (Expr, [Rule])
 evalWithRules = evalWithRulesN (-1)
 
-step :: Expr -> (Expr, [Rule])
+showEvalSteps :: Expr -> [(Rule, Expr)]
+showEvalSteps e =
+    if isNormal e
+        then [(NoRule, e)]
+        else
+            let (e', r) = step e
+            in  (r, e') : showEvalSteps e'
+
+step :: Expr -> (Expr, Rule)
 -- Leaf -> Stem
-step (App (Prg Leaf) (Prg a)) = (Prg (Stem a), [RuleL])
+step (App (Prg Leaf) (Prg a)) = (Prg (Stem a), RuleL)
 -- Stem -> Fork
-step (App (Prg (Stem a)) (Prg b)) = (Prg (Fork a b), [RuleS])
+step (App (Prg (Stem a)) (Prg b)) = (Prg (Fork a b), RuleS)
 -- ttab = a             -> ALab = a
-step (App (Prg (Fork Leaf a)) _) = (Prg a, [Rule1])
+step (App (Prg (Fork Leaf a)) _) = (Prg a, Rule1)
 -- t(ta)bc = ac(bc)     -> A(Sa)bc = A(Aac)(Abc)
 step (App (Prg (Fork (Stem a) b)) c) =
-    (applyExpr (applyExpr (Prg a) c) (applyExpr (Prg b) c), [Rule2])
+    (applyExpr (applyExpr (Prg a) c) (applyExpr (Prg b) c), Rule2)
 -- t(tab)ct = a         -> A(Fab)cL = a
-step (App (Prg (Fork (Fork a _) _)) (Prg Leaf)) = (Prg a, [Rule3a])
+step (App (Prg (Fork (Fork a _) _)) (Prg Leaf)) = (Prg a, Rule3a)
 -- t(tab)c(tu) = bu     -> A(Fab)c(Su) = Abu
 step (App (Prg (Fork (Fork _ b) _)) (Prg (Stem u))) =
-    (applyProgram b u, [Rule3b])
+    (applyProgram b u, Rule3b)
 -- t(tab)c(tuv) = cuv   -> A(Fab)c(Fuv) = A(Acu)v
 step (App (Prg (Fork (Fork _ _) c)) (Prg (Fork u v))) =
-    (applyExpr (applyProgram c u) (Prg v), [Rule3c])
-step (App left right) =
-    let (left', r0) = step left
-        (right', r1) = step right
-    in  (App left' right', r0 ++ r1)
-step e = (e, [NoRule])
+    (applyExpr (applyProgram c u) (Prg v), Rule3c)
+step (App left right@(App _ _)) =
+    let (right', rule) = step right
+    in  (App left right', rule)
+step (App left@(App _ _) right) =
+    let (left', rule) = step left
+    in  (App left' right, rule)
+step e = (e, NoRule)

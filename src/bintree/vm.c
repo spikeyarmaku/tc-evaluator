@@ -17,7 +17,12 @@
 // TODO If there are no shared nodes in a rule, repurposing App nodes should be
 // fine
 
+// FIXME Check if child addresses overflow
+
 #include "vm.h"
+#include "array.h"
+#include "node.h"
+#include "tree.h"
 
 #include <inttypes.h>
 
@@ -48,7 +53,7 @@ struct VM vm_make(struct Tree tree) {
     struct VM vm;
     vm.tree = tree;
     vm.spine = spine_array_make();
-    
+
     // If the top of the tree is an App, add it to the spine
     Node top = tree_get_node(tree, 0);
     if (node_get_tag(top) == App) {
@@ -87,8 +92,8 @@ enum StepState vm_step(struct VM* vm) {
         return Done;
     }
 
-    _spine_print(vm->spine);
-    tree_debug_print(vm->tree);
+    // _spine_print(vm->spine);
+    // tree_debug_print(vm->tree);
 
     // Check the current node. If it is not an App, we're done
     Node top_node = tree_get_node(vm->tree, top_index);
@@ -115,12 +120,13 @@ enum StepState vm_step(struct VM* vm) {
             }
             case Indirection: {
                 debug("Invoking indirection rule (right-side)\n");
+                // A a Ib -> Aab
                 Index indir_index = node_get_indir(right_child);
                 tree_decr_refcount(&vm->tree, right_child_index);
                 node_set_right_child_index(&top_node, indir_index);
                 tree_set_node(&vm->tree, top_index, top_node);
 
-                _spine_print(vm->spine);
+                // _spine_print(vm->spine);
                 // tree_debug_print(vm->tree);
                 return Running;
                 break;
@@ -135,6 +141,7 @@ enum StepState vm_step(struct VM* vm) {
     Index left_child_index = node_get_left_child_index(top_node);
     if (left_child_index == 0) {
         debug("Invoking rule 0a\n");
+        // A L b -> Sb
         // Left child is a leaf - make a stem
         node_set_tag(&top_node, Stem);
         node_set_left_child_index(&top_node, right_child_index);
@@ -146,6 +153,7 @@ enum StepState vm_step(struct VM* vm) {
         switch (node_get_tag(left_child)) {
             case Indirection: {
                 debug("Invoking indirection rule (left side)\n");
+                // A Ia b -> Aab
                 Index indir_index = node_get_indir(left_child);
                 tree_decr_refcount(&vm->tree, left_child_index);
                 node_set_left_child_index(&top_node, indir_index);
@@ -154,12 +162,14 @@ enum StepState vm_step(struct VM* vm) {
             }
             case Stem: {
                 debug("Invoking rule 0b\n");
+                // A Sa b -> Fab
                 // Left child is a stem - make a fork
                 tree_decr_refcount(&vm->tree, left_child_index);
+                Index node_a_index = node_get_left_child_index(left_child);
                 node_set_tag(&top_node, Fork);
-                node_set_left_child_index(&top_node,
-                    node_get_left_child_index(left_child));
+                node_set_left_child_index(&top_node, node_a_index);
                 node_set_right_child_index(&top_node, right_child_index);
+                tree_incr_refcount(&vm->tree, node_a_index);
                 tree_set_node(&vm->tree, top_index, top_node);
                 spine_array_pop(&vm->spine, &empty);
                 break;
@@ -190,6 +200,11 @@ void vm_run(struct VM* vm) {
     size_t counter = 0;
     while (state == Running) {
         debug("--- STEP %d ---\n", counter++);
+        // if (counter == 640992) {
+        // if (counter >= 24810611) {
+        //     tree_print_comb(vm->tree);
+        //     tree_debug_print(vm->tree);
+        // }
         state = vm_step(vm);
     }
 }
@@ -209,6 +224,7 @@ static void _apply_rules(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child, Index right_child_index,
     Node right_child)
 {
+    debug("Top index: %lu\n", top_index);
     if (node_get_left_child_index(left_child) == 0) {
         // Rule 1
         _apply_rule_1(tree, top_index, top_node, left_child_index, left_child,
@@ -246,8 +262,8 @@ static void _apply_rules(struct Tree* tree, Index top_index, Node top_node,
                             break;
                         }
                         default: {
-                            fail("PANIC! Invalid tag during rule application: "
-                                "%d\n", node_get_tag(right_child));
+                            fail("PANIC! Invalid right tag during rule "
+                                "application: %d\n", node_get_tag(right_child));
                             break;
                         }
                     }
@@ -255,7 +271,7 @@ static void _apply_rules(struct Tree* tree, Index top_index, Node top_node,
                 break;
             }
             default: {
-                fail("PANIC! Invalid tag during rule application: %d\n",
+                fail("PANIC! Invalid left tag during rule application: %d\n",
                     node_get_tag(left_child));
                 break;
             }
@@ -312,7 +328,7 @@ static void _apply_rule_2(struct Tree* tree, Index top_index, Node top_node,
     tree_set_node(tree, top_index, top_node);
     tree_incr_refcount(tree, node_a_index);
     tree_incr_refcount(tree, node_c_index);
-    tree_incr_refcount(tree, node_c_index);
+    tree_incr_refcount(tree, right_child_index);
     tree_incr_refcount(tree, right_child_index);
     tree_decr_refcount(tree, left_child_index);
     tree_decr_refcount(tree, right_child_index);
@@ -334,10 +350,10 @@ static void _apply_rule_3a(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child)
 {
     debug("Invoking rule 3a\n");
-    node_set_tag(&top_node, Indirection);
     Index node_lower_F_index = node_get_left_child_index(left_child);
     Node node_lower_F = tree_get_node(*tree, node_lower_F_index);
     Index node_a_index = node_get_left_child_index(node_lower_F);
+    node_set_indir(&top_node, node_a_index);
     node_set_right_child_index(&top_node, node_a_index);
     tree_set_node(tree, top_index, top_node);
     tree_incr_refcount(tree, node_a_index);
@@ -352,7 +368,7 @@ static void _apply_rule_3a(struct Tree* tree, Index top_index, Node top_node,
 //    / \  |   --->   / \
 //   F   c u         b   u
 //  / \
-// a   b  
+// a   b
 static void _apply_rule_3b(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child, Index right_child_index,
     Node right_child)
@@ -380,7 +396,7 @@ static void _apply_rule_3b(struct Tree* tree, Index top_index, Node top_node,
 //    / \   / \   --->  A   v
 //   F   c u   v       / \
 //  / \               c   u
-// a   b  
+// a   b
 static void _apply_rule_3c(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child, Index right_child_index,
     Node right_child)

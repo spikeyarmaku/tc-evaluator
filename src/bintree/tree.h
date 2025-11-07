@@ -31,5 +31,8 @@ Index       tree_search_free_spaces (struct Tree tree, size_t size,
 size_t      tree_get_node_count     (struct Tree tree);
 void        tree_print              (struct Tree tree);
 void        tree_debug_print        (struct Tree tree);
+void        tree_print_comb         (struct Tree tree);
+
+bool_t      tree_check_free_spaces  (struct Tree tree, size_t* free_space_count);
 
 #endif

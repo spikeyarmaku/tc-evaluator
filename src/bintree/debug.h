@@ -1,7 +1,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#define DEBUG_PRINTS
+// #define DEBUG_PRINTS
 // #define OUTPUT_DIAGRAMS
 
 #ifdef DEBUG_PRINTS

@@ -49,11 +49,8 @@
 
 #define TAG_MASK_SHIFT 0
 #define REFCOUNT_MASK_SHIFT 2
-#define LEFT_CHILD_MASK_SHIFT 18
-#define RIGHT_CHILD_MASK_SHIFT 41
-
-#define REFCOUNT_LIMIT (((uint_least64_t)1<<16) - 1)
-#define CHILD_LIMIT (((uint_least64_t)1<<23) - 1)
+#define LEFT_CHILD_MASK_SHIFT 16
+#define RIGHT_CHILD_MASK_SHIFT 40
 
 #define TAG_MASK (((uint_least64_t)1<<2) - 1)
 #define REFCOUNT_MASK (REFCOUNT_LIMIT << REFCOUNT_MASK_SHIFT)

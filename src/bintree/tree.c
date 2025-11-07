@@ -1,9 +1,13 @@
 #include <stdio.h>
 
 #include "tree.h"
+#include "array.h"
+#include "global.h"
+#include "node.h"
 
 static void _tree_clear_node(struct Tree* tree, Index index);
 void _tree_print_subtree(struct Tree tree, Index index, bool_t root);
+void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root);
 size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root);
 
 // -----------------------------------------------------------------------------
@@ -42,6 +46,10 @@ Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
         }
     }
 
+    if (new_node_index >= CHILD_LIMIT) {
+        tree_debug_print(*tree);
+        fail("Panic! tree_add_node: node index overflow\n");
+    }
     return new_node_index;
 }
 
@@ -90,10 +98,24 @@ void tree_decr_refcount(struct Tree* tree, Index index) {
 
 void tree_delete_children(struct Tree* tree, Index index) {
     Node node = tree_get_node(*tree, index);
-    Index left = node_get_left_child_index(node);
-    Index right = node_get_right_child_index(node);
-    tree_decr_refcount(tree, left);
-    tree_decr_refcount(tree, right);
+    switch (node_get_tag(node)) {
+        case Stem: {
+            Index left = node_get_left_child_index(node);
+            tree_decr_refcount(tree, left);
+            break;
+        }
+        case Fork:
+        case App: {
+            Index left = node_get_left_child_index(node);
+            Index right = node_get_right_child_index(node);
+            tree_decr_refcount(tree, left);
+            tree_decr_refcount(tree, right);
+            break;
+        }
+        default: {
+            break;
+        }
+    }
 }
 
 // Start searching for `size` contiguous empty nodes from tree->search_start,
@@ -133,6 +155,97 @@ void tree_print(struct Tree tree) {
         printf("\n");
     } else {
         printf("t\n");
+    }
+}
+
+void tree_debug_print(struct Tree tree) {
+    Index cursor = 0;
+    size_t count = node_array_count(tree.nodes);
+    char buf[1024];
+    printf("Tree (%lu free, start at %lu):\n", tree.free_space_count,
+        tree.search_start);
+    while (cursor < count) {
+        node_print(buf, node_array_get(tree.nodes, cursor));
+        printf("%lu: %s\n", cursor, buf);
+        cursor++;
+    }
+}
+
+void tree_print_comb(struct Tree tree) {
+if (node_array_count(tree.nodes) > 0) {
+        _tree_print_comb_subtree(tree, 0, TRUE);
+        printf("\n");
+    } else {
+        printf("L\n");
+    }
+}
+
+bool_t tree_check_free_spaces(struct Tree tree, size_t* free_space_count) {
+    // tree->free_space_count
+    *free_space_count = 0;
+    Index cursor = 0;
+    size_t count = node_array_count(tree.nodes);
+    while (cursor < count) {
+        if (node_get_refcount(node_array_get(tree.nodes, cursor)) == 0) {
+            (*free_space_count)++;
+            if (*free_space_count > tree.free_space_count) {
+                return FALSE;
+            }
+        }
+        cursor++;
+    }
+    if (*free_space_count != tree.free_space_count) {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+// ----------------------------- INTERNAL METHODS -----------------------------
+
+static void _tree_clear_node(struct Tree* tree, Index index) {
+    if (index < tree->search_start) {
+        tree->search_start = index;
+    }
+    node_array_set(tree->nodes, index, 0);
+}
+
+size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root) {
+    if (root == FALSE && index == 0) {
+        return 1;
+    }
+    Node node = tree_get_node(tree, index);
+    switch (node_get_tag(node)) {
+        case Indirection: {
+            return _tree_get_node_count(tree, node_get_indir(node), FALSE);
+            break;
+        }
+        case Stem: {
+            return 1 +
+                _tree_get_node_count(tree, node_get_left_child_index(node),
+                FALSE);
+            break;
+        }
+        case Fork: {
+            return 1 +
+                _tree_get_node_count(tree, node_get_left_child_index(node),
+                FALSE) +
+                _tree_get_node_count(tree, node_get_right_child_index(node),
+                FALSE);
+            break;
+        }
+        case App: {
+            return
+                _tree_get_node_count(tree, node_get_left_child_index(node),
+                FALSE) +
+                _tree_get_node_count(tree, node_get_right_child_index(node),
+                FALSE);
+            break;
+        }
+        default: {
+            fail("PANIC! tree_get_node_count: invalid tag - %d\n",
+                node_get_tag(node));
+            break;
+        }
     }
 }
 
@@ -207,63 +320,43 @@ void _tree_print_subtree(struct Tree tree, Index index, bool_t root) {
     }
 }
 
-void tree_debug_print(struct Tree tree) {
-    // Index cursor = 0;
-    // size_t count = node_array_count(tree.nodes);
-    // char buf[1024];
-    // printf("Tree (%lu free, start at %lu):\n", tree.free_space_count,
-    //     tree.search_start);
-    // while (cursor < count) {
-    //     node_print(buf, node_array_get(tree.nodes, cursor));
-    //     printf("%lu: %s\n", cursor, buf);
-    //     cursor++;
-    // }
-}
-
-// ----------------------------- INTERNAL METHODS -----------------------------
-
-static void _tree_clear_node(struct Tree* tree, Index index) {
-    if (index < tree->search_start) {
-        tree->search_start = index;
-    }
-    node_array_set(tree->nodes, index, 0);
-}
-
-size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root) {
+void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root) {
     if (root == FALSE && index == 0) {
-        return 1;
+        printf("L");
+        return;
     }
-    Node node = tree_get_node(tree, index);
-    switch (node_get_tag(node)) {
+    Node top = tree_get_node(tree, index);
+    switch (node_get_tag(top)) {
         case Indirection: {
-            return _tree_get_node_count(tree, node_get_indir(node), FALSE);
+            _tree_print_comb_subtree(tree, node_get_indir(top), FALSE);
             break;
         }
         case Stem: {
-            return 1 +
-                _tree_get_node_count(tree, node_get_left_child_index(node),
-                FALSE);
+            printf("S");
+            Index left = node_get_left_child_index(top);
+            _tree_print_comb_subtree(tree, left, FALSE);
             break;
         }
         case Fork: {
-            return 1 +
-                _tree_get_node_count(tree, node_get_left_child_index(node),
-                FALSE) +
-                _tree_get_node_count(tree, node_get_right_child_index(node),
-                FALSE);
+            printf("F");
+            Index left = node_get_left_child_index(top);
+            _tree_print_comb_subtree(tree, left, FALSE);
+
+            Index right = node_get_right_child_index(top);
+            _tree_print_comb_subtree(tree, right, FALSE);
             break;
         }
         case App: {
-            return
-                _tree_get_node_count(tree, node_get_left_child_index(node),
-                FALSE) +
-                _tree_get_node_count(tree, node_get_right_child_index(node),
-                FALSE);
+            printf("A");
+            Index left = node_get_left_child_index(top);
+            _tree_print_comb_subtree(tree, left, FALSE);
+
+            Index right = node_get_right_child_index(top);
+            _tree_print_comb_subtree(tree, right, FALSE);
             break;
         }
         default: {
-            fail("PANIC! tree_get_node_count: invalid tag - %d\n",
-                node_get_tag(node));
+            fail("PANIC! tree_print: invalid tag - %d\n", node_get_tag(top));
             break;
         }
     }
