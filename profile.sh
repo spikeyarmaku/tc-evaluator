@@ -1,3 +1,5 @@
+cmake -B build -DCMAKE_BUILD_TYPE=Profiling -DRUN_CABAL=on
+
 # Memcheck:
 valgrind --track-origins=yes build/TreeCalculusRuntime
 
