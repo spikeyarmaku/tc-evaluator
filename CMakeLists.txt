@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(TreeCalculusRuntime VERSION 0.1.0 LANGUAGES C)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+  set(CMAKE_C_STANDARD_INCLUDE_DIRECTORIES
+      ${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES})
+endif()
+
 add_executable(TreeCalculusRuntime)
 
 include(CTest)
