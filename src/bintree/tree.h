@@ -25,8 +25,7 @@ void        tree_set_node           (struct Tree* tree, Index index, Node node);
 void        tree_incr_refcount      (struct Tree* tree, Index index);
 void        tree_decr_refcount      (struct Tree* tree, Index index);
 void        tree_delete_children    (struct Tree* tree, Index index);
-Index       tree_search_free_spaces (struct Tree tree, size_t size,
-    bool_t* error);
+Index       tree_search_free_space  (struct Tree tree);
 
 size_t      tree_get_node_count     (struct Tree tree);
 void        tree_print              (struct Tree tree);

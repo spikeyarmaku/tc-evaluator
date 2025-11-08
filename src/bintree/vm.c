@@ -109,7 +109,7 @@ enum StepState vm_step(struct VM* vm) {
 
     // Check the right child. If it is an App, reduce it
     Index right_child_index = node_get_right_child_index(top_node);
-    Node right_child = 0;
+    Node right_child;
     if (right_child_index != 0) {
         right_child = tree_get_node(vm->tree, right_child_index);
         switch (node_get_tag(right_child)) {
@@ -200,8 +200,7 @@ void vm_run(struct VM* vm) {
     size_t counter = 0;
     while (state == Running) {
         debug("--- STEP %d ---\n", counter++);
-        // if (counter == 640992) {
-        // if (counter >= 24810611) {
+        // if (counter >= 1) {
         //     tree_print_comb(vm->tree);
         //     tree_debug_print(vm->tree);
         // }

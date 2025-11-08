@@ -1,12 +1,12 @@
 // Node structure:
 
 // Bits
-// 0 1 | 2 3 4 ... 17 18 | 19 20 21 ... 40 41 | 42 43 44 ... 63 64
+// 0 1 | 2 3 4 ... 31 32 | 33 34 35 ... 79 80 | 81 82 83 ... 126 127
 // |     |                  |                   |
-// |     |                  |                   +--- 23 bits: address of
+// |     |                  |                   +--- 48 bits: address of
 // |     |                  |                        second child
-// |     |                  +--- 23 bits: address of first child
-// |     +--- 16 bits: Refcount
+// |     |                  +--- 48 bits: address of first child
+// |     +--- 30 bits: Refcount
 // +--- 2 bits: TAG (0 - special, 1 - stem, 2 - fork, 3 - app)
 
 // An example for a stem node whose child is located at index 5:
@@ -45,12 +45,14 @@
 #include "node.h"
 
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define TAG_MASK_SHIFT 0
 #define REFCOUNT_MASK_SHIFT 2
-#define LEFT_CHILD_MASK_SHIFT 16
-#define RIGHT_CHILD_MASK_SHIFT 40
+#define LEFT_CHILD_MASK_SHIFT 32
+#define RIGHT_CHILD_MASK_SHIFT 80
 
 #define TAG_MASK (((uint_least64_t)1<<2) - 1)
 #define REFCOUNT_MASK (REFCOUNT_LIMIT << REFCOUNT_MASK_SHIFT)
@@ -60,8 +62,17 @@
 // ------------------------------ PUBLIC METHODS ------------------------------
 
 Node node_make(enum NodeTag tag, size_t refcount, Index left, Index right) {
-    return tag + (refcount << REFCOUNT_MASK_SHIFT) +
-        (left << LEFT_CHILD_MASK_SHIFT) + (right << RIGHT_CHILD_MASK_SHIFT);
+    Node result;
+    uint_least32_t tag_refcount = tag + (refcount << REFCOUNT_MASK_SHIFT);
+    memcpy(result.data, &tag_refcount, 4);
+    node_set_left_child_index(&result, left);
+    node_set_right_child_index(&result, right);
+    return result;
+}
+
+Node node_make_empty() {
+    Node result = {0, 0, 0, 0, 0, 0};
+    return result;
 }
 
 Index node_get_indir(Node node) {
@@ -78,50 +89,61 @@ bool_t node_is_empty(Node node) {
 }
 
 uint32_t node_get_refcount(Node node) {
-    return get_masked(node, REFCOUNT_MASK) >> REFCOUNT_MASK_SHIFT;
+    uint_least64_t refcount;
+    memcpy(&refcount, node.data, 4);
+    return get_masked(refcount, REFCOUNT_MASK) >> REFCOUNT_MASK_SHIFT;
 }
 
 void node_set_refcount(Node* node, uint32_t refcount) {
-    *node = set_masked(*node, (uint_least64_t)refcount << REFCOUNT_MASK_SHIFT,
-        REFCOUNT_MASK);
+    uint_least64_t tag_refcount;
+    memcpy(&tag_refcount, node->data, 4);
+    tag_refcount = set_masked(tag_refcount,
+        (uint_least64_t)refcount << REFCOUNT_MASK_SHIFT, REFCOUNT_MASK);
+    memcpy(node->data, &tag_refcount, 4);
 }
 
 void node_incr_refcount(Node* node) {
-    if (node_get_refcount(*node) == REFCOUNT_LIMIT) {
+    uint_least64_t refcount = node_get_refcount(*node);
+    if (refcount == REFCOUNT_LIMIT) {
         fail("PANIC! node_incr_refcount: Refcount overflow\n");
     }
-    *node += (1 << REFCOUNT_MASK_SHIFT);
+    node_set_refcount(node, refcount + 1);
 }
 
 void node_decr_refcount(Node* node) {
-    if (node_get_refcount(*node) != 0) {
-        *node -= (1 << REFCOUNT_MASK_SHIFT);
+    uint_least64_t refcount = node_get_refcount(*node);
+    if (refcount != 0) {
+        node_set_refcount(node, refcount - 1);
     }
 }
 
 enum NodeTag node_get_tag(Node node) {
-    return (enum NodeTag)(get_masked(node, TAG_MASK) >> TAG_MASK_SHIFT);
+    return (enum NodeTag)(get_masked(node.data[0], TAG_MASK) >> TAG_MASK_SHIFT);
 }
 
 void node_set_tag(Node* node, enum NodeTag tag) {
-    *node = set_masked(*node, (uint_least64_t)tag << TAG_MASK_SHIFT, TAG_MASK);
+    node->data[0] = set_masked(node->data[0],
+        (uint_least64_t)tag << TAG_MASK_SHIFT, TAG_MASK);
 }
 
 Index node_get_left_child_index(Node node) {
-    return get_masked(node, LEFT_CHILD_MASK) >> LEFT_CHILD_MASK_SHIFT;
+    Index result = 0;
+    memcpy(&result, node.data + 2, 6);
+    return result;
 }
 
 Index node_get_right_child_index(Node node) {
-    return get_masked(node, RIGHT_CHILD_MASK) >> RIGHT_CHILD_MASK_SHIFT;
+    Index result = 0;
+    memcpy(&result, node.data + 5, 6);
+    return result;
 }
 
 void node_set_left_child_index(Node* node, Index left) {
-    *node = set_masked(*node, left << LEFT_CHILD_MASK_SHIFT, LEFT_CHILD_MASK);
+    memcpy(node->data + 2, &left, 6);
 }
 
 void node_set_right_child_index(Node* node, Index right) {
-    *node = set_masked(*node, right << RIGHT_CHILD_MASK_SHIFT,
-        RIGHT_CHILD_MASK);
+    memcpy(node->data + 5, &right, 6);
 }
 
 int node_print(char* buffer, Node node) {

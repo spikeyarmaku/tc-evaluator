@@ -29,7 +29,9 @@
 
 // See node.c for details and examples
 
-typedef uint_least64_t Node;
+typedef struct NodeData {
+    uint16_t data[8];
+} Node;
 
 enum NodeTag {
     Indirection = 0,
@@ -40,6 +42,7 @@ enum NodeTag {
 
 Node            node_make                   (enum NodeTag tag, size_t refcount,
     Index left, Index right);
+Node            node_make_empty             ();
 Index           node_get_indir              (Node node);
 void            node_set_indir              (Node* node, Index index);
 bool_t          node_is_empty               (Node node);

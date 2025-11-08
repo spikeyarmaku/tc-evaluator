@@ -1,6 +1,5 @@
 #include "array.h"
 
-#include <inttypes.h>
 #include <string.h>
 
 const char node_type_table[] = {'L', 'S', 'F', 'A'};
@@ -88,20 +87,6 @@ void node_array_set(struct Array array, Index index, Node node) {
 size_t node_array_count(struct Array array) {
     return array.size / sizeof(Node);
 }
-
-// void node_array_print(int ind, struct Array array) {
-//     debug_indent(ind, "\n----------\nNODES:\n----------\n");
-//     Node* cursor = (Node*)array.data;
-//     while (cursor <= (uint8_t*)array.data + array.size) {
-//         debug_indent(ind,
-//             "%" PRIuPTR ": %c %lu %lu\n",
-//             (uintptr_t)cursor,
-//             node_type_table[get_tag(*cursor)],
-//             get_left_child(*cursor),
-//             get_right_child(*cursor));
-//         cursor++;
-//     }
-// }
 
 struct Array spine_array_make() {
     return array_make(SPINE_ARRAY_CAPACITY);

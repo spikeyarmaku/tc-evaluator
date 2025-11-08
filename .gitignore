@@ -27,3 +27,4 @@ cabal.project.local~
 .vscode
 
 build
+.cache

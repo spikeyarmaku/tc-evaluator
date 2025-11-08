@@ -25,10 +25,11 @@ Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
     Index right_child_index)
 {
     bool_t no_free_space;
-    Index new_node_index = tree_search_free_spaces(*tree, 1, &no_free_space);
+    // Index new_node_index = tree_search_free_space(*tree);
+    Index new_node_index = 0;
 
     Node new_node = node_make(tag, 1, left_child_index, right_child_index);
-    if (no_free_space == TRUE) {
+    if (new_node_index == 0) {
         debug("Pushing node\n");
         new_node_index = node_array_push(&tree->nodes, new_node);
     } else {
@@ -119,29 +120,21 @@ void tree_delete_children(struct Tree* tree, Index index) {
 }
 
 // Start searching for `size` contiguous empty nodes from tree->search_start,
-// and return the index of the first empty space
-Index tree_search_free_spaces(struct Tree tree, size_t size, bool_t* error) {
-    if (tree.free_space_count < size) {
-        *error = TRUE;
+// and return the index of the first empty space. Return 0 if no free space is
+// found.
+Index tree_search_free_space(struct Tree tree) {
+    if (tree.free_space_count == 0) {
         return 0;
     }
 
     Index search = tree.search_start;
     size_t elem_count = node_array_count(tree.nodes);
-    size_t counter = 0;
     while ((size_t)search < elem_count) {
         if (node_is_empty(node_array_get(tree.nodes, search)) == TRUE) {
-            counter++;
-        } else {
-            counter = 0;
+            return search;
         }
         search++;
-        if (counter == size) {
-            *error = FALSE;
-            return search - size;
-        }
     }
-    *error = TRUE;
     return 0;
 }
 
@@ -206,7 +199,7 @@ static void _tree_clear_node(struct Tree* tree, Index index) {
     if (index < tree->search_start) {
         tree->search_start = index;
     }
-    node_array_set(tree->nodes, index, 0);
+    node_array_set(tree->nodes, index, node_make_empty());
 }
 
 size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root) {
