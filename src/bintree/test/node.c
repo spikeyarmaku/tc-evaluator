@@ -3,17 +3,14 @@
 #include "../node.h"
 
 void print_node_bits(Node node) {
-#ifdef DEBUG_PRINTS
     char buffer[72];
-    for (int i = 0; i < 8; i++) {
-        sprintbits(buffer + i * 9, (uint_least64_t)node.data[i], TRUE);
-    }
+    sprintbits(buffer, (uint_least64_t)node.left, TRUE);
+    printf("%s | ", buffer);
+    sprintbits(buffer, (uint_least64_t)node.right, TRUE);
     printf("%s\n", buffer);
-#endif
 }
 
 void node_test() {
-#ifdef DEBUG_PRINTS
     Node test = node_make(Stem, 1, 16, 0);
     // print_node_bits(test);
     check("Make a stem", node_get_tag(test) == Stem);
@@ -31,6 +28,8 @@ void node_test() {
     node_incr_refcount(&test);
     node_incr_refcount(&test);
     node_decr_refcount(&test);
+    node_set_left_child_index(&test, 9);
+    node_set_right_child_index(&test, 9);
     check("Set and get refcount", node_get_refcount(test) == 16);
 
     char buf[1024];
@@ -40,5 +39,4 @@ void node_test() {
     node_set_tag(&test, Indirection);
     node_print(buf, test);
     printf("Node print test: %s\n", buf);
-#endif
 }

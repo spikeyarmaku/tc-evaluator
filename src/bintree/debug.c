@@ -15,7 +15,7 @@ void debug_indent(int indent_amount, const char* s, ...) {
     #ifdef DEBUG_PRINTS
     for (int i = 0; i < indent_amount * TAB_SIZE; i++) {
         printf(" ");
-    }    
+    }
     va_list args;
     va_start(args, s);
     vprintf(s, args);
@@ -29,7 +29,6 @@ void debug_indent(int indent_amount, const char* s, ...) {
 // n: the number to be printed
 // sep: should groups of 8 bits be separated by space
 void sprintbits(char* buffer, uint_least64_t n, bool_t sep) {
-#ifdef DEBUG_PRINTS
     uint8_t base_max = sizeof(n) * CHAR_BIT;
     uint8_t base = 0;
     uint8_t cursor = 0;
@@ -51,5 +50,4 @@ void sprintbits(char* buffer, uint_least64_t n, bool_t sep) {
         cursor++;
     }
     buffer[cursor] = 0;
-#endif
 }

@@ -8,16 +8,16 @@
 #include "global.h"
 #include "debug.h"
 
-// The tree is stored as a series of Nodes. A node is a 64-bit integer value.
-// The first 2 bits act as a tag (Special, Stem, Fork or Application). The next
-// 10 bits are the node's reference count, and the remaining 2 * 24 bits are the
-// indices of its two children. Leaf nodes are not stored, as they don't have
-// any children, and they contain no useful information - all leaf nodes are the
-// same. They are represented by the 0 index. Special nodes have subtypes: one
-// is the indirection node, which is useful when the parent node's child index
-// has to be changed (e.g. with rules 1 and 3a).
+// The tree is stored as a series of Nodes. A node is a 128-bit integer value:
+// 2 bits for tag (Indirection, Stem, Fork or Application), 30 bits for refcount
+// and 48-48 bits for child indices. Leaf nodes are not stored, as they don't
+// have any children, and they contain no useful information - all leaf nodes
+// are the same. They are represented by the 0 index. Indirection nodes are
+// useful when the parent node's child index has to be changed (e.g. with rules
+// 1 and 3a).
 
-// Further node type ideas
+// Further node type ideas (these, together with Indirection, can be special
+// node types, and the Indirection tag could be renamed to Special):
 // - Number
 //      They contain a 32-bit natural number, that can be incrementally
 //      unpacked into a tree
@@ -30,7 +30,8 @@
 // See node.c for details and examples
 
 typedef struct NodeData {
-    uint16_t data[8];
+    uint64_t left;
+    uint64_t right;
 } Node;
 
 enum NodeTag {
