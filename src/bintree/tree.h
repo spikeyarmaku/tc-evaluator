@@ -11,8 +11,7 @@
 #include <string.h>
 
 struct Tree {
-    // Nodes of the tree
-    struct Array nodes;
+    struct Array nodes; // Nodes of the tree
     size_t free_space_count;
     Index search_start; // Entries before this are 100% non-empty
 };

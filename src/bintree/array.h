@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 
-#include "debug.h"
 #include "global.h"
 #include "node.h"
 
@@ -35,7 +34,6 @@ Node            node_array_get      (struct Array array, Index index);
 void            node_array_set      (struct Array array, Index index,
                                     Node node);
 size_t          node_array_count    (struct Array array);
-// void            node_array_print    (int ind, struct Array array);
 
 // Spine stack
 struct Array    spine_array_make    ();

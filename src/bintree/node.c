@@ -16,35 +16,8 @@
 // |     +--- refcount: 1 (0b1)
 // +--- tag: 1 - stem (0b1)
 
-// Example:
-// t(t(tttt))
-// A(A(A(FLL)L)L)L
-// A-1-0 A-2-0 A-3-0 F-0-0
-
-// A L a            -> S a
-// A S a   c        -> F a c
-// A F L   c u      -> c
-// A F Sa  c u      -> AAacAbc
-// A F Fab c L      -> a
-// A F Fab c Su     -> Abu
-// A F Fab c Fuv    -> AAcuv
-
-// sample eval: AAAFLLLLL -> FLL
-// (XXX means empty cell, [...] is the currently evaluated node)
-// memory                   matched pattern
-//[A10] A20  A30  F00       A A
-// A10 [A20] A30  F00       A A
-// A10  A20 [A30] F00       A F L c u         --- match!
-// A10  A00  XXX  XXX       [reduction]
-// A10 [A00] XXX  XXX       A L a
-// A10 [S00] XXX  XXX       [reduction]
-//[A10] S00  XXX  XXX       A S a c
-//[F00] XXX  XXX  XXX       [reduction]
-// F00  XXX  XXX  XXX       [end]
-
 #include "node.h"
 
-#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

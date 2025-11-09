@@ -4,27 +4,13 @@
 // so e.g. it gets the instructions AAALLLL, and by the second L, it realizes
 // that rule 1 has to be invoked
 
-// TODO Can there ever be a NULL node that is behind an indirection node?
-
-// TODO Why does this runtime eat 2 gigs of RAM on fib 28? (Probably due to the
-// conservative deletion of nodes - indirs are only deleted in `vm_step`)
-
-// NOTE On the TC playground, there are DAG notations for trees. But from my
-// tests, reducing a tree in full form vs in DAG form does not differ much in
-// reduction speed. DAG form may be faster by a few percentages (Fib 28: 2m3s vs
-// 1m59s). Memory consumption is also roughly the same.
-
 // TODO If there are no shared nodes in a rule, repurposing App nodes should be
 // fine
-
-// FIXME Check if child addresses overflow
 
 #include "vm.h"
 #include "array.h"
 #include "node.h"
 #include "tree.h"
-
-#include <inttypes.h>
 
 static void     _apply_rules        (struct Tree* tree, Index top_index,
     Node top_node, Index left_child_index, Node left_child,
@@ -62,27 +48,6 @@ struct VM vm_make(struct Tree tree) {
     return vm;
 }
 
-// Reduction rules:
-// A   L         u   -> Su          // Leaf -> Stem
-// A   S a       u   -> Fau         // Stem -> Fork
-// ---
-// A   F L   c   u   -> c           // Rule 1
-// A   F Sa  c   u   -> AAauAcu     // Rule 2
-// A   F Fab c   L   -> a           // Rule 3a
-// A   F Fab c   Su  -> Abu         // Rule 3b
-// A   F Fab c   Fuv -> AAcuv       // Rule 3c
-
-// sample eval:  (XX means empty cell, [...] is the currently evaluated node)
-// Every entry is a letter - number pair, where the letter is the tag, and the
-// number is the index of its first child
-// memory                                  matched pattern
-//[A1] A3  L0  A5  L0  F7  L0  L0  L0       A A
-// A1 [A3] L0  A5  L0  F7  L0  L0  L0       A A
-// A1  A3  L0 [A5] L0  F7  L0  L0  L0       A F L c u         --- match!
-// A1  A3  L0  L0  L0  XX  XX  XX  XX       [reduction]
-// A1 [A3] L0  L0  L0  XX  XX  XX  XX       A L
-//[A1] A3  L0  L0  L0  XX  XX  XX  XX       A L
-// A1  A3  L0  L0  L0  XX  XX  XX  XX       [end of eval]
 enum StepState vm_step(struct VM* vm) {
     // Pop the top of the stack
     bool_t empty = FALSE;
@@ -92,14 +57,13 @@ enum StepState vm_step(struct VM* vm) {
         return Done;
     }
 
-    // _spine_print(vm->spine);
-    // tree_debug_print(vm->tree);
-
     // Check the current node. If it is not an App, we're done
     Node top_node = tree_get_node(vm->tree, top_index);
     enum NodeTag top_tag = node_get_tag(top_node);
     if (top_tag != App) {
         if (top_tag == Indirection) {
+            // There's nothing that can be done when an indirection is the top
+            // node. Go back one level and try again
             spine_array_pop(&vm->spine, &empty);
             return Running;
         } else {
@@ -125,9 +89,6 @@ enum StepState vm_step(struct VM* vm) {
                 tree_decr_refcount(&vm->tree, right_child_index);
                 node_set_right_child_index(&top_node, indir_index);
                 tree_set_node(&vm->tree, top_index, top_node);
-
-                // _spine_print(vm->spine);
-                // tree_debug_print(vm->tree);
                 return Running;
                 break;
             }
@@ -200,10 +161,6 @@ void vm_run(struct VM* vm) {
     size_t counter = 0;
     while (state == Running) {
         debug("--- STEP %d ---\n", counter++);
-        // if (counter >= 1) {
-        //     tree_print_comb(vm->tree);
-        //     tree_debug_print(vm->tree);
-        // }
         state = vm_step(vm);
     }
 }
