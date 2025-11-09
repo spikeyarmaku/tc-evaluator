@@ -20,10 +20,6 @@ typedef size_t Index;
 
 #define GROWTH_FACTOR 1.5f
 
-// Control space usage during pretty-printing trees:
-// tt(tt(tt)t) vs. t t (t t (t t) t)
-#define USE_SPACES
-
 static inline void fail(const char* error_msg, ...) {
     char buffer[1024];
     va_list args;

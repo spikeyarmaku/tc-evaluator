@@ -27,7 +27,8 @@ void        tree_delete_children    (struct Tree* tree, Index index);
 Index       tree_search_free_space  (struct Tree tree);
 
 size_t      tree_get_node_count     (struct Tree tree);
-void        tree_print              (struct Tree tree);
+void        tree_print              (struct Tree tree, char* buffer,
+    bool_t use_spaces);
 void        tree_debug_print        (struct Tree tree);
 void        tree_print_comb         (struct Tree tree);
 

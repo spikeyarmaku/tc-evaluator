@@ -43,6 +43,7 @@ enum NodeTag {
 Node            node_make                   (enum NodeTag tag, size_t refcount,
     Index left, Index right);
 Node            node_make_empty             ();
+bool_t          node_is_equal               (Node node0, Node node1);
 Index           node_get_indir              (Node node);
 void            node_set_indir              (Node* node, Index index);
 bool_t          node_is_empty               (Node node);

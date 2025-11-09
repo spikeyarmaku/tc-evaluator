@@ -52,7 +52,6 @@ enum StepState vm_step(struct VM* vm) {
     // Pop the top of the stack
     bool_t empty = FALSE;
     Index top_index = spine_array_peek(&vm->spine, &empty);
-
     if (empty == TRUE) {
         return Done;
     }
@@ -160,7 +159,9 @@ void vm_run(struct VM* vm) {
 
     size_t counter = 0;
     while (state == Running) {
-        debug("--- STEP %d ---\n", counter++);
+        debug("--- STEP %lu ---\n", counter++);
+        // tree_debug_print(vm->tree);
+        // _spine_print(vm->spine);
         state = vm_step(vm);
     }
 }

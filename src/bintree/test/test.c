@@ -3,18 +3,17 @@
 void node_test();
 void array_test();
 void tree_test();
+void vm_test();
 
 void check(char* label, bool_t cond) {
     if (cond == TRUE) {
-#ifdef DEBUG_PRINTS
         printf("Test OK - %s\n", label);
-#endif
     } else {
         fail("TEST FAILED - %s", label);
     }
 }
 
-void main() {
+int main() {
     printf("Node tests\n");
     node_test();
 
@@ -23,4 +22,8 @@ void main() {
 
     printf("Tree tests\n");
     tree_test();
+
+    printf("VM tests\n");
+    vm_test();
+    return 0;
 }

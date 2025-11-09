@@ -15,7 +15,9 @@ int main() {
     vm_run(&vm);
 
     // tree_print_comb(vm.tree);
-    tree_print(vm.tree);
+    char buffer[1024];
+    tree_print(vm.tree, buffer, TRUE);
+    printf("%s\n", buffer);
     // tree_debug_print(vm.tree);
     return 0;
 }

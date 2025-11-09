@@ -6,8 +6,8 @@
 #include "node.h"
 
 static void _tree_clear_node(struct Tree* tree, Index index);
-void _tree_print_subtree(struct Tree tree, Index index, bool_t root,
-    bool_t use_spaces);
+void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
+    Index index, bool_t root);
 void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root);
 size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root);
 
@@ -25,7 +25,6 @@ struct Tree tree_make() {
 Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
     Index right_child_index)
 {
-    bool_t no_free_space;
     Index new_node_index = tree_search_free_space(*tree);
     // Index new_node_index = 0; // Turn off searching
 
@@ -37,7 +36,6 @@ Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
         tree_delete_children(tree, new_node_index);
         tree_set_node(tree, new_node_index, new_node);
         tree->free_space_count--;
-        size_t node_count = node_array_count(tree->nodes);
         if (tree->free_space_count == 0) {
             // Set the "first free node index" to the theoretical max, so if a
             // node is freed up, it is guaranteed to have a lower index, and
@@ -142,17 +140,17 @@ size_t tree_get_node_count(struct Tree tree) {
     return _tree_get_node_count(tree, 0, TRUE);
 }
 
-void tree_print(struct Tree tree) {
-    if (node_array_count(tree.nodes) > 0) {
+void tree_print(struct Tree tree, char* buffer, bool_t use_spaces) {
+    if (node_array_count(tree.nodes) - tree.free_space_count > 0) {
 #ifdef USE_SPACES
         bool_t use_spaces = TRUE;
 #else
         bool_t use_spaces = FALSE;
 #endif
-        _tree_print_subtree(tree, 0, TRUE, use_spaces);
-        printf("\n");
+        buffer[0] = 0;
+        _tree_print_subtree(tree, buffer, use_spaces, 0, TRUE);
     } else {
-        printf("t\n");
+        sprintf(buffer, "t");
     }
 }
 
@@ -248,73 +246,74 @@ size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root) {
     }
 }
 
-void _tree_print_subtree(struct Tree tree, Index index, bool_t root,
-    bool_t use_spaces)
+void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
+    Index index, bool_t root)
 {
     if (root == FALSE && index == 0) {
-        printf("t");
+        strcat(buffer, "t");
         return;
     }
     Node top = tree_get_node(tree, index);
     switch (node_get_tag(top)) {
         case Indirection: {
-            _tree_print_subtree(tree, node_get_indir(top), FALSE, use_spaces);
+            _tree_print_subtree(tree, buffer, use_spaces, node_get_indir(top),
+                FALSE);
             break;
         }
         case Stem: {
-            printf("t");
+            strcat(buffer, "t");
             Index left = node_get_left_child_index(top);
             if (use_spaces == TRUE) {
-                printf(" ");
+                strcat(buffer, " ");
             }
             if (left != 0) {
-                printf("(");
+                strcat(buffer, "(");
             }
-            _tree_print_subtree(tree, left, FALSE, use_spaces);
+            _tree_print_subtree(tree, buffer, use_spaces, left, FALSE);
             if (left != 0) {
-                printf(")");
+                strcat(buffer, ")");
             }
             break;
         }
         case Fork: {
-            printf("t");
+            strcat(buffer, "t");
             Index left = node_get_left_child_index(top);
             if (use_spaces == TRUE) {
-                printf(" ");
+                strcat(buffer, " ");
             }
             if (left != 0) {
-                printf("(");
+                strcat(buffer, "(");
             }
-            _tree_print_subtree(tree, left, FALSE, use_spaces);
+            _tree_print_subtree(tree, buffer, use_spaces, left, FALSE);
             if (left != 0) {
-                printf(")");
+                strcat(buffer, ")");
             }
             Index right = node_get_right_child_index(top);
             if (use_spaces == TRUE) {
-                printf(" ");
+                strcat(buffer, " ");
             }
             if (right != 0) {
-                printf("(");
+                strcat(buffer, "(");
             }
-            _tree_print_subtree(tree, right, FALSE, use_spaces);
+            _tree_print_subtree(tree, buffer, use_spaces, right, FALSE);
             if (right != 0) {
-                printf(")");
+                strcat(buffer, ")");
             }
             break;
         }
         case App: {
             Index left = node_get_left_child_index(top);
-            _tree_print_subtree(tree, left, FALSE, use_spaces);
+            _tree_print_subtree(tree, buffer, use_spaces, left, FALSE);
             Index right = node_get_right_child_index(top);
             if (use_spaces == TRUE) {
-                printf(" ");
+                strcat(buffer, " ");
             }
             if (right != 0) {
-                printf("(");
+                strcat(buffer, "(");
             }
-            _tree_print_subtree(tree, right, FALSE, use_spaces);
+            _tree_print_subtree(tree, buffer, use_spaces, right, FALSE);
             if (right != 0) {
-                printf(")");
+                strcat(buffer, ")");
             }
             break;
         }

@@ -17,6 +17,7 @@
 // +--- tag: 1 - stem (0b1)
 
 #include "node.h"
+#include "global.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -46,6 +47,15 @@ Node node_make(enum NodeTag tag, size_t refcount, Index left, Index right) {
 Node node_make_empty() {
     Node result = {0, 0, 0, 0, 0, 0};
     return result;
+}
+
+bool_t node_is_equal(Node node0, Node node1) {
+    for (uint8_t i = 0; i < 8; i++) {
+        if (node0.data[i] != node1.data[i]) {
+            return FALSE;
+        }
+    }
+    return TRUE;
 }
 
 Index node_get_indir(Node node) {
