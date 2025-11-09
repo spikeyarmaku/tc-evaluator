@@ -25,8 +25,8 @@ Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
     Index right_child_index)
 {
     bool_t no_free_space;
-    // Index new_node_index = tree_search_free_space(*tree);
-    Index new_node_index = 0;
+    Index new_node_index = tree_search_free_space(*tree);
+    // Index new_node_index = 0; // Turn off searching
 
     Node new_node = node_make(tag, 1, left_child_index, right_child_index);
     if (new_node_index == 0) {
