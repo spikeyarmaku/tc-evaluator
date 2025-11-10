@@ -30,6 +30,7 @@ void            array_unpop     (struct Array* array, size_t elem_size);
 // Node vector
 struct Array    node_array_make     ();
 Index           node_array_push     (struct Array* array, Node node);
+void            node_array_pop      (struct Array* array);
 Node            node_array_get      (struct Array array, Index index);
 void            node_array_set      (struct Array array, Index index,
                                     Node node);

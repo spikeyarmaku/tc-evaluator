@@ -18,6 +18,6 @@ void tree_test() {
     tree_add_node(&tree, Stem, 0, 0);
     check("Check tree length",
         node_array_count(tree.nodes) - tree.free_space_count == 3);
-    
+
     check("Check tree node count", tree_get_node_count(tree) == 5);
 }

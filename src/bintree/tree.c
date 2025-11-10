@@ -5,7 +5,6 @@
 #include "global.h"
 #include "node.h"
 
-static void _tree_clear_node(struct Tree* tree, Index index);
 void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
     Index index, bool_t root);
 void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root);
@@ -17,7 +16,6 @@ struct Tree tree_make() {
     struct Tree tree;
     tree.nodes = node_array_make();
     tree.free_space_count = 0;
-    tree.search_start = -1;
     return tree;
 }
 
@@ -25,25 +23,25 @@ struct Tree tree_make() {
 Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
     Index right_child_index)
 {
-    Index new_node_index = tree_search_free_space(*tree);
-    // Index new_node_index = 0; // Turn off searching
-
     Node new_node = node_make(tag, 1, left_child_index, right_child_index);
-    if (new_node_index == 0) {
-        debug("Pushing node\n");
-        new_node_index = node_array_push(&tree->nodes, new_node);
-    } else {
+    Index new_node_index = 0;
+
+    // Check if the last node is a marker for empty space
+    Index last_index = node_array_count(tree->nodes) - 1;
+    if (last_index != 0) {
+        Node last_node = tree_get_node(*tree, last_index);
+        if (node_get_refcount(last_node) == 0) {
+            new_node_index = node_get_indir(last_node);
+            node_array_pop(&tree->nodes);
+        }
+    }
+
+    if (new_node_index != 0) {
         tree_delete_children(tree, new_node_index);
         tree_set_node(tree, new_node_index, new_node);
         tree->free_space_count--;
-        if (tree->free_space_count == 0) {
-            // Set the "first free node index" to the theoretical max, so if a
-            // node is freed up, it is guaranteed to have a lower index, and
-            // thus `search_start` gets updated properly
-            tree->search_start = (size_t)-1;
-        } else {
-            tree->search_start = new_node_index + 1;
-        }
+    } else {
+        new_node_index = node_array_push(&tree->nodes, new_node);
     }
 
     if (new_node_index >= CHILD_LIMIT) {
@@ -86,13 +84,8 @@ void tree_decr_refcount(struct Tree* tree, Index index) {
     node_decr_refcount(&node);
     if (node_get_refcount(node) == 0) {
         tree_set_node(tree, index, node);
-        if (tree->search_start > index) {
-            tree->search_start = index;
-        }
-        debug("tree_decr_refcount %lu - Incr free space from %lu ", index,
-            tree->free_space_count);
         tree->free_space_count++;
-        debug("to %lu\n", tree->free_space_count);
+        node_array_push(&tree->nodes, node_make(0, 0, index, 0));
     }
 }
 
@@ -118,24 +111,6 @@ void tree_delete_children(struct Tree* tree, Index index) {
     }
 }
 
-// Start searching for an empty space from tree->search_start, and return its
-// index. Return 0 if no free space is found, since 0 is an invalid index.
-Index tree_search_free_space(struct Tree tree) {
-    if (tree.free_space_count == 0) {
-        return 0;
-    }
-
-    Index search = tree.search_start;
-    size_t elem_count = node_array_count(tree.nodes);
-    while ((size_t)search < elem_count) {
-        if (node_is_empty(node_array_get(tree.nodes, search)) == TRUE) {
-            return search;
-        }
-        search++;
-    }
-    return 0;
-}
-
 size_t tree_get_node_count(struct Tree tree) {
     return _tree_get_node_count(tree, 0, TRUE);
 }
@@ -158,8 +133,7 @@ void tree_debug_print(struct Tree tree) {
     Index cursor = 0;
     size_t count = node_array_count(tree.nodes);
     char buf[1024];
-    printf("Tree (%lu free, start at %lu):\n", tree.free_space_count,
-        tree.search_start);
+    printf("Tree (%lu free):\n", tree.free_space_count);
     while (cursor < count) {
         node_print(buf, node_array_get(tree.nodes, cursor));
         printf("%lu: %s\n", cursor, buf);
@@ -198,13 +172,6 @@ bool_t tree_check_free_spaces(struct Tree tree, size_t* free_space_count) {
 }
 
 // ----------------------------- INTERNAL METHODS -----------------------------
-
-static void _tree_clear_node(struct Tree* tree, Index index) {
-    if (index < tree->search_start) {
-        tree->search_start = index;
-    }
-    node_array_set(tree->nodes, index, node_make_empty());
-}
 
 size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root) {
     if (root == FALSE && index == 0) {

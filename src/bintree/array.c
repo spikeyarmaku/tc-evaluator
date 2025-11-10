@@ -76,6 +76,10 @@ Index node_array_push(struct Array* array, Node node) {
     return array_push(array, sizeof(Node), &node);
 }
 
+void node_array_pop(struct Array* array) {
+    array_pop(array, sizeof(Node));
+}
+
 Node node_array_get(struct Array array, Index index) {
     return ((Node*)array.data)[index];
 }

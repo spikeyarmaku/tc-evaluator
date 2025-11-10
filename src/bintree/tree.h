@@ -13,7 +13,6 @@
 struct Tree {
     struct Array nodes; // Nodes of the tree
     size_t free_space_count;
-    Index search_start; // Entries before this are 100% non-empty
 };
 
 struct Tree tree_make               ();
@@ -24,7 +23,6 @@ void        tree_set_node           (struct Tree* tree, Index index, Node node);
 void        tree_incr_refcount      (struct Tree* tree, Index index);
 void        tree_decr_refcount      (struct Tree* tree, Index index);
 void        tree_delete_children    (struct Tree* tree, Index index);
-Index       tree_search_free_space  (struct Tree tree);
 
 size_t      tree_get_node_count     (struct Tree tree);
 void        tree_print              (struct Tree tree, char* buffer,
