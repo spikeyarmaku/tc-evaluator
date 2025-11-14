@@ -1,9 +1,3 @@
-// Idea:
-// What if init_program consists of just binary code for instructions on how to
-// build the tree, and the runtime reduces the tree as it is building it?
-// so e.g. it gets the instructions AAALLLL, and by the second L, it realizes
-// that rule 1 has to be invoked
-
 // TODO If there are no shared nodes in a rule, repurposing App nodes should be
 // fine
 
@@ -11,6 +5,8 @@
 #include "array.h"
 #include "node.h"
 #include "tree.h"
+
+#include "debug.h"
 
 static void     _apply_rules        (struct Tree* tree, Index top_index,
     Node top_node, Index left_child_index, Node left_child,
@@ -35,17 +31,23 @@ static void     _spine_print        (struct Array spine);
 
 // -----------------------------------------------------------------------------
 
-struct VM vm_make(struct Tree tree) {
+struct VM vm_make(struct VMConfig config) {
     struct VM vm;
-    vm.tree = tree;
-    vm.spine = spine_array_make();
+    vm.tree = tree_make(config.initial_tree_capacity);
+    vm.spine = spine_array_make(config.initial_spine_capacity);
 
-    // If the top of the tree is an App, add it to the spine
-    Node top = tree_get_node(tree, 0);
-    if (node_get_tag(top) == App) {
-        spine_array_push(&vm.spine, 0);
-    }
+    // The first node of the tree is a pointer to the top of the tree
+    tree_add_node(&vm.tree, Indirection, 0, 0);
     return vm;
+}
+
+void vm_free(struct VM vm) {
+    tree_free(&vm.tree);
+    array_free(&vm.spine);
+}
+
+void vm_init(struct VM vm) {
+    spine_array_push(&vm.spine, node_get_indir(tree_get_node(vm.tree, 0)));
 }
 
 enum StepState vm_step(struct VM* vm) {

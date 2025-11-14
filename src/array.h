@@ -24,20 +24,22 @@ bool_t          array_is_empty  (struct Array array);
 void*           array_pop       (struct Array* array, size_t elem_size);
 void*           array_peek      (struct Array* array, size_t elem_size);
 void            array_unpop     (struct Array* array, size_t elem_size);
+void            array_free      (struct Array* array);
 
 // Derivations
 
 // Node vector
-struct Array    node_array_make     ();
+struct Array    node_array_make     (size_t capacity);
 Index           node_array_push     (struct Array* array, Node node);
 void            node_array_pop      (struct Array* array);
 Node            node_array_get      (struct Array array, Index index);
+Node*           node_array_get_ref  (struct Array array, Index index);
 void            node_array_set      (struct Array array, Index index,
                                     Node node);
 size_t          node_array_count    (struct Array array);
 
 // Spine stack
-struct Array    spine_array_make    ();
+struct Array    spine_array_make    (size_t capacity);
 void            spine_array_push    (struct Array* array, Index node_index);
 Index           spine_array_pop     (struct Array* array, bool_t* error);
 Index           spine_array_peek    (struct Array* array, bool_t* error);

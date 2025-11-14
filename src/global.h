@@ -13,8 +13,6 @@ typedef size_t Index;
 #define TRUE 1
 #define FALSE 0
 
-#define NODE_ARRAY_CAPACITY ((uint_least64_t)(1<<10))
-#define SPINE_ARRAY_CAPACITY ((uint_least64_t)(1<<10))
 #define REFCOUNT_LIMIT (((uint_least64_t)1<<30) - 1)
 #define CHILD_LIMIT (((uint_least64_t)1<<48) - 1)
 

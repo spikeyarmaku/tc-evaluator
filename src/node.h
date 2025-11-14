@@ -6,7 +6,8 @@
 #include <assert.h>
 
 #include "global.h"
-#include "debug.h"
+
+#include "../include/tceval.h"
 
 // The tree is stored as a series of Nodes. A node is a 128-bit integer value:
 // 2 bits for tag (Indirection, Stem, Fork or Application), 30 bits for refcount
@@ -41,24 +42,31 @@ enum NodeTag {
     App         = 3
 };
 
+// Create
 Node            node_make                   (enum NodeTag tag, size_t refcount,
     Index left, Index right);
 Node            node_make_empty             ();
+
+// Compare
 bool_t          node_is_equal               (Node node0, Node node1);
-Index           node_get_indir              (Node node);
-void            node_set_indir              (Node* node, Index index);
 bool_t          node_is_empty               (Node node);
-uint32_t        node_get_refcount           (Node node);
-void            node_set_refcount           (Node* node, uint32_t refcount);
-void            node_incr_refcount          (Node* node);
-void            node_decr_refcount          (Node* node);
+
+// Get
+Index           node_get_indir              (Node node);
 enum NodeTag    node_get_tag                (Node node);
-enum SpecialNodeTag node_get_special_tag    (Node node);
-void            node_set_tag                (Node* node, enum NodeTag tag);
+uint32_t        node_get_refcount           (Node node);
 Index           node_get_left_child_index   (Node node);
 Index           node_get_right_child_index  (Node node);
+
+// Set
+void            node_set_indir              (Node* node, Index index);
+void            node_set_tag                (Node* node, enum NodeTag tag);
+void            node_set_refcount           (Node* node, uint32_t refcount);
 void            node_set_left_child_index   (Node* node, Index left);
 void            node_set_right_child_index  (Node* node, Index right);
+
+void            node_incr_refcount          (Node* node);
+void            node_decr_refcount          (Node* node);
 
 int             node_print                  (char* buffer, Node node);
 

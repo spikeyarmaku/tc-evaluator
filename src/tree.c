@@ -12,11 +12,16 @@ size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root);
 
 // -----------------------------------------------------------------------------
 
-struct Tree tree_make() {
+struct Tree tree_make(size_t capacity) {
     struct Tree tree;
-    tree.nodes = node_array_make();
+    tree.nodes = node_array_make(capacity);
     tree.free_space_count = 0;
     return tree;
+}
+
+void tree_free(struct Tree* tree) {
+    array_free(&tree->nodes);
+    tree->free_space_count = 0;
 }
 
 // Either allocate or reuse space for a new node, and fill it with data
@@ -53,6 +58,22 @@ Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
 
 Node tree_get_node(struct Tree tree, Index index) {
     return node_array_get(tree.nodes, index);
+}
+
+// Since this is used by the API, skip over indirection nodes
+Node* tree_get_node_ref(struct Tree tree, Index index) {
+    Node* node = node_array_get_ref(tree.nodes, index);
+    if (node == NULL) {
+        return NULL;
+    }
+    while (node_get_tag(*node) == Indirection) {
+        Index referenced_node_index = node_get_indir(*node);
+        if (referenced_node_index == 0) {
+            return NULL;
+        }
+        node = node_array_get_ref(tree.nodes, referenced_node_index);
+    }
+    return node;
 }
 
 void tree_set_node(struct Tree* tree, Index index, Node node) {

@@ -15,10 +15,12 @@ struct Tree {
     size_t free_space_count;
 };
 
-struct Tree tree_make               ();
+struct Tree tree_make               (size_t capacity);
+void        tree_free               (struct Tree* tree);
 Index       tree_add_node           (struct Tree* tree, enum NodeTag tag,
     Index left_child_index, Index right_child_index);
 Node        tree_get_node           (struct Tree tree, Index index);
+Node*       tree_get_node_ref       (struct Tree tree, Index index);
 void        tree_set_node           (struct Tree* tree, Index index, Node node);
 void        tree_incr_refcount      (struct Tree* tree, Index index);
 void        tree_decr_refcount      (struct Tree* tree, Index index);
@@ -30,6 +32,7 @@ void        tree_print              (struct Tree tree, char* buffer,
 void        tree_debug_print        (struct Tree tree);
 void        tree_print_comb         (struct Tree tree);
 
-bool_t      tree_check_free_spaces  (struct Tree tree, size_t* free_space_count);
+bool_t      tree_check_free_spaces  (struct Tree tree,
+    size_t* free_space_count);
 
 #endif

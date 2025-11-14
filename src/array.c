@@ -1,4 +1,5 @@
 #include "array.h"
+#include <inttypes.h>
 
 #include <string.h>
 
@@ -68,8 +69,14 @@ void array_unpop(struct Array* array, size_t elem_size) {
     array->size += elem_size;
 }
 
-struct Array node_array_make() {
-    return array_make(NODE_ARRAY_CAPACITY);
+void array_free(struct Array* array) {
+    free(array->data);
+    array->capacity = 0;
+    array->size = 0;
+}
+
+struct Array node_array_make(size_t capacity) {
+    return array_make(capacity * sizeof(Node));
 }
 
 Index node_array_push(struct Array* array, Node node) {
@@ -84,6 +91,10 @@ Node node_array_get(struct Array array, Index index) {
     return ((Node*)array.data)[index];
 }
 
+Node* node_array_get_ref(struct Array array, Index index) {
+    return (Node*)array.data + index;
+}
+
 void node_array_set(struct Array array, Index index, Node node) {
     array_set(array, index, sizeof(Node), &node);
 }
@@ -92,8 +103,8 @@ size_t node_array_count(struct Array array) {
     return array.size / sizeof(Node);
 }
 
-struct Array spine_array_make() {
-    return array_make(SPINE_ARRAY_CAPACITY);
+struct Array spine_array_make(size_t capacity) {
+    return array_make(capacity * sizeof(Index));
 }
 
 void spine_array_push(struct Array* array, Index node_index) {
