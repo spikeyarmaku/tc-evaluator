@@ -18,10 +18,10 @@ common warnings
 executable tc-comp
     import:           warnings
     main-is:          Main.hs
-    other-modules:    Tree, Eval, Inet, Global
+    other-modules:    Tree, Eval, Inet
     -- other-extensions:
-    build-depends:    base ^>=4.18.2.1,
+    build-depends:    base,
                       QuickCheck,
                       process
-    hs-source-dirs:   src
+    hs-source-dirs:   src/compiler
     default-language: Haskell2010

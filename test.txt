@@ -73,13 +73,13 @@
 ;;; Fibonacci bench
 (t (t (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t (t (t t) t) t)))) (t (t (t (t (t t (t (t (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t t))) (t (t (t t t)) t)))) (t t (t t))))) (t (t (t t (t (t (t t (t (t (t (t (t t (t (t (t t t))))) t))))) (t t)))) (t t)))) (t t t)))) (t (t (t t (t t)))))) (t t (t (t t))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))) (t t t))))))) (t (t (t t (t (t (t t (t (t (t (t (t t (t (t (t t (t (t (t t t)) t))) (t t)))) (t (t (t t (t (t (t t (t (t (t (t (t t)) t))))) (t t)))) (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))))) (t t)))) (t (t (t (t (t t (t (t (t t (t (t (t t t)) t))) (t t)))) (t (t (t t t)) t))) (t (t (t t (t (t (t (t (t t (t (t (t t t)) t))) (t (t (t t (t t))) (t (t (t t t)) t)))) (t t (t t))))) (t (t (t (t (t t (t (t (t t t)) t))) (t t))) (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))))))))) (t t (t (t (t t) (t t t)) (t t (t t t))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))) (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t))) (t t (t (t (t t (t (t (t t (t (t t t)))) (t (t (t t (t (t (t (t (t (t (t t (t (t (t t t))))) t)) (t t (t t (t (t t t) (t (t (t t (t (t (t t (t t)))))) t)))))) (t t t)))) (t (t (t t (t (t t))))))))) (t (t (t t (t (t (t (t (t t (t (t (t (t (t (t (t t)) t)) (t (t (t t)) t)))))) (t t)))))) (t t))))))) (t t t))
 ; (△ (△ △) (△ △ (△ (△ △) △))) ; 5
-(△ △ (△ △ (△ (△ △) (△ (△ △) (△ (△ △) △))))) ; 28
+; (△ △ (△ △ (△ (△ △) (△ (△ △) (△ (△ △) △))))) ; 28
 ; (△ (△ △) (△ (△ △) (△ (△ △) (△ (△ △) △)))) ; 15
 ; (△ (△ △) (△ △ (△ △ (△ (△ △) (△ (△ △) △))))) ; 25
 ; (t t (t t (t (t t) (t t (t (t t) t))))) ; 20
 ; (△ △ (△ (△ △) (△ △ (△ (△ △) △)))) ; 10
 ; (△ (△ △) △) ; 1
-; (t t (t t (t t (t (t t) t)))) ; 8
+(t t (t t (t t (t (t t) t)))) ; 8
 ; (△ (△ △) (△ △ (△ (△ △) (△ (△ △) △)))) ; 13
 ; (△ △ (△ △ (△ (△ △) (△ (△ △) △)))) ; 12
 

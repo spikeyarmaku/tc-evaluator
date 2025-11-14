@@ -3,7 +3,6 @@ module Inet where
 import Data.Word (Word8, Word64)
 
 import Tree (BinTree(..), getBinTreeChildren)
-import Global (inetBase)
 
 data Agent = L | S | F | E | D | A | T | Q | I deriving (Eq, Show)
 data PortNum = P0 | P1 | P2 | P3 | P4 | Main deriving (Eq)
@@ -46,7 +45,7 @@ getEntry k = snd . head . filter ((== k) . fst)
 
 compileInet :: FilePath -> BinTree -> IO ()
 compileInet fp binTree = do
-    baseStr <- readFile inetBase
+    baseStr <- readFile "src/runtime.c"
     writeFile fp $ baseStr ++ transpile binTree
 
 binTreeToCode :: BinTree -> Code
