@@ -3,10 +3,15 @@
 
 #include "vm.h"
 #include "array.h"
+#include "global.h"
 #include "node.h"
 #include "tree.h"
 
 #include "debug.h"
+#include <string.h>
+
+const struct VMHeader vm_default_header = {"TCVM", 1, 0};
+const struct VMConfig vm_default_config = {1<<10, 1<<10};
 
 static void     _apply_rules        (struct Tree* tree, Index top_index,
     Node top_node, Index left_child_index, Node left_child,
@@ -168,13 +173,43 @@ void vm_run(struct VM* vm) {
     }
 }
 
-// Serialize the VM's state into a byte array
-void* vm_serialize(struct VM vm, size_t* size) {
-    // TODO
+size_t vm_get_size(struct VM vm) {
+    return vm.tree.nodes.size;
 }
 
-struct VM vm_deserialize(void* data) {
-    // TODO
+// Serialize the VM's state into a byte array
+void vm_serialize(vm_write_fn write_fn, struct VM vm, size_t chunk_size) {
+    size_t total_size = vm_get_size(vm);
+    size_t written_total = 0;
+    struct VMHeader header = vm_default_header;
+    header.size = total_size;
+    write_fn(&header, sizeof(struct VMHeader));
+    while (total_size > written_total) {
+        size_t written = write_fn(vm.tree.nodes.data + written_total,
+            chunk_size);
+        written_total += written;
+    }
+}
+
+enum VMResult vm_deserialize(struct VM* vm, vm_read_fn read_fn, uint8_t* data,
+    size_t chunk_size)
+{
+    struct VMHeader header;
+    size_t read = read_fn(&header, sizeof(struct VMHeader));
+    if (read != sizeof(struct VMHeader)) {
+        return VM_ERR_TRUNCATED;
+    }
+    if (strcmp(header.magic, vm_default_header.magic) != 0) {
+        return VM_ERR_MAGIC_MISMATCH;
+    }
+    // TODO check version
+    // if (vm_check_version(header.version) != 0) {
+    // return VM_ERR_UNSUPPORTED_VERSION
+    // }
+    struct VMConfig config = vm_default_config;
+    config.initial_tree_capacity = header.size;
+    *vm = vm_make(config);
+    return VM_OK;
 }
 
 // -------------------------------- INTERNAL METHODS ---------------------------

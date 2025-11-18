@@ -11,12 +11,21 @@ struct VM {
     struct Array spine; // Index array
 };
 
+struct VMHeader {
+    char magic[4];      // 4 bytes
+    uint32_t version;   // 4 bytes
+    size_t size;        // 8 bytes - size of the tree node array in bytes
+};
+
 struct VM       vm_make         (struct VMConfig config);
 void            vm_free         (struct VM vm);
 void            vm_init         (struct VM vm);
 enum StepState  vm_step         (struct VM* vm);
 void            vm_run          (struct VM* vm);
-void*           vm_serialize    (struct VM vm, size_t* size);
-struct VM       vm_deserialize  (void* data);
+size_t          vm_get_size     (struct VM vm);
+void            vm_serialize    (vm_write_fn write_fn, struct VM vm,
+    size_t chunk_size);
+enum VMResult   vm_deserialize  (struct VM* vm, vm_read_fn read_fn,
+    uint8_t* data, size_t chunk_size);
 
 #endif

@@ -1,5 +1,4 @@
 #include "array.h"
-#include <inttypes.h>
 
 #include <string.h>
 

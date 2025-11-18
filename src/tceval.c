@@ -3,24 +3,32 @@
 #include "tree.h"
 #include "vm.h"
 
-const struct VMConfig tc_default_config = {1<<10, 1<<10};
+extern const struct VMConfig vm_default_config;
 
-VM_h tc_make_vm(struct VMConfig config) {
-    struct VM* vm = malloc(sizeof(struct VM));
-    *vm = vm_make(config);
-    return vm;
+enum VMResult tc_make_vm(VM_h* vm, struct VMConfig config) {
+    *vm = malloc(sizeof(struct VM));
+    **vm = vm_make(config);
+    return VM_OK;
 }
 
 void tc_free_vm(VM_h vm) {
     vm_free(*vm);
+    free(vm);
 }
 
-void tc_load_tree(VM_h vm, uint8_t* bytes, size_t size) {
-    // TODO
+enum VMResult tc_read_vm(VM_h* vm, vm_read_fn fn, uint8_t* bytes,
+    size_t chunk_size)
+{
+    *vm = malloc(sizeof(struct VM));
+    return vm_deserialize(*vm, fn, bytes, chunk_size);
 }
 
-uint8_t* tc_save_tree(VM_h vm, size_t* size) {
-    // TODO
+void tc_write_vm(vm_write_fn fn, VM_h vm, size_t chunk_size) {
+    vm_serialize(fn, *vm, chunk_size);
+}
+
+size_t tc_vm_get_size(VM_h vm) {
+    return vm_get_size(*vm);
 }
 
 Index tc_add_node(VM_h vm, enum NodeType type, Index left, Index right) {
