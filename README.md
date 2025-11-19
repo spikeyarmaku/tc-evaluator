@@ -1,8 +1,12 @@
 # TC-evaluator
 
-#### A tree calculus evaluator library written in C
+A tree calculus evaluator library written in C.
 
-TC-evaluator is a virtual machine that reduces trees according to tree calculus' reduction rules. It has no IO or side effects.
+## Description
+
+Tree Calculus (TC) is a mathematical model of computation (see [Acknowledgements](#acknowledgements)), similar to Lambda Calculus, but with introspection capabilities. TC-evaluator is a virtual machine that reduces trees according to TC's reduction rules. It has no IO or side effects.
+
+It is not meant to be used directly, but as a language backend, like the STG-machine for GHC, or the BEAM VM for Erlang.
 
 ## How to Build
 
@@ -22,10 +26,35 @@ The default build mode is Release (which can also be set with `cmake -B build -D
 
 ## Usage
 
-The example at `examples/main.c` shows a basic way of using this lib.
+The example at `examples/main.c` shows a basic way of using this lib. It shows how to:
+
+- Create, save and load a VM
+- Run the reduction process
+- Query the resulting structure
+
+Output:
+```
+=== Example TC program ===
+> Create VM
+> Add nodes
+App
+    ├ Fork
+        ├ Stem
+            └ Leaf
+        └ Leaf
+    └ Leaf
+> Save VM to file
+> Load VM from file
+> Run VM
+> Query the result
+Fork
+    ├ Leaf
+    └ Stem
+        └ Leaf
+```
 
 ## Acknowledgements
 
 Tree Calculus was discovered by [Barry Jay](https://github.com/barry-jay-personal/blog).
 
-[treecalcul.us](https://treecalcul.us) is an excellent website with an intuitive Tree Calculus code playground created by [Johannes Bader](https://johannes-bader.com/).
+More information and an interactive playground can be found at [treecalcul.us](https://treecalcul.us), a website made by [Johannes Bader](https://johannes-bader.com/).

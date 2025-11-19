@@ -40,4 +40,12 @@ static inline uint_least64_t set_masked(uint_least64_t number,
     return (number & ~mask) + (value & mask);
 }
 
+static inline size_t min(size_t a, size_t b) {
+    return (a < b) ? a : b;
+}
+
+static inline size_t max(size_t a, size_t b) {
+    return (a > b) ? a : b;
+}
+
 #endif // GLOBAL_H

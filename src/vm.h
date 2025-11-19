@@ -18,14 +18,14 @@ struct VMHeader {
 };
 
 struct VM       vm_make         (struct VMConfig config);
-void            vm_free         (struct VM vm);
-void            vm_init         (struct VM vm);
+void            vm_free         (struct VM* vm);
+void            vm_init         (struct VM* vm);
 enum StepState  vm_step         (struct VM* vm);
 void            vm_run          (struct VM* vm);
 size_t          vm_get_size     (struct VM vm);
 void            vm_serialize    (vm_write_fn write_fn, struct VM vm,
-    size_t chunk_size);
+    size_t chunk_size, void* ctx);
 enum VMResult   vm_deserialize  (struct VM* vm, vm_read_fn read_fn,
-    uint8_t* data, size_t chunk_size);
+    size_t chunk_size, void* ctx);
 
 #endif

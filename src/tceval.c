@@ -12,19 +12,18 @@ enum VMResult tc_make_vm(VM_h* vm, struct VMConfig config) {
 }
 
 void tc_free_vm(VM_h vm) {
-    vm_free(*vm);
+    vm_free(vm);
     free(vm);
 }
 
-enum VMResult tc_read_vm(VM_h* vm, vm_read_fn fn, uint8_t* bytes,
-    size_t chunk_size)
+enum VMResult tc_read_vm(VM_h* vm, vm_read_fn fn, size_t chunk_size, void* ctx)
 {
     *vm = malloc(sizeof(struct VM));
-    return vm_deserialize(*vm, fn, bytes, chunk_size);
+    return vm_deserialize(*vm, fn, chunk_size, ctx);
 }
 
-void tc_write_vm(vm_write_fn fn, VM_h vm, size_t chunk_size) {
-    vm_serialize(fn, *vm, chunk_size);
+void tc_write_vm(VM_h vm, vm_write_fn fn, size_t chunk_size, void* ctx) {
+    vm_serialize(fn, *vm, chunk_size, ctx);
 }
 
 size_t tc_vm_get_size(VM_h vm) {
@@ -43,6 +42,7 @@ enum StepState tc_step(VM_h vm) {
 }
 
 void tc_run(VM_h vm) {
+    vm_init(vm);
     vm_run(vm);
 }
 
@@ -51,7 +51,7 @@ Node_h tc_get_top(VM_h vm) {
 }
 
 void tc_set_top(VM_h vm, Index index) {
-    Node node = node_make_empty();
+    Node node = tree_get_node(vm->tree, 0);
     node_set_indir(&node, index);
     tree_set_node(&vm->tree, 0, node);
 }
@@ -71,16 +71,10 @@ enum NodeType tc_get_node_type(Node_h node) {
 }
 
 Index tc_get_left(Node_h node) {
-    if (node == NULL) {
-        fail("tc_get_left: node == NULL\n");
-    }
-    Index left = node_get_left_child_index(*node);
+    return node_get_left_child_index(*node);
 }
 
 Index tc_get_right(Node_h node) {
-    if (node == NULL) {
-        fail("tc_get_right: node == NULL\n");
-    }
     return node_get_right_child_index(*node);
 }
 

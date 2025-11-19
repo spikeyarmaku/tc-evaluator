@@ -56,11 +56,11 @@ void* array_pop(struct Array* array, size_t elem_size) {
     return (uint8_t*)array->data + array->size;
 }
 
-void* array_peek(struct Array* array, size_t elem_size) {
-    if (array_is_empty(*array) == TRUE) {
+void* array_peek(struct Array array, size_t elem_size) {
+    if (array_is_empty(array) == TRUE) {
         return NULL;
     }
-    return (uint8_t*)array->data + array->size - elem_size;
+    return (uint8_t*)array.data + array.size - elem_size;
 }
 
 // NOTE: Unsafe, use with caution
@@ -120,7 +120,7 @@ Index spine_array_pop(struct Array* array, bool_t* error) {
     return *result;
 }
 
-Index spine_array_peek(struct Array* array, bool_t* error) {
+Index spine_array_peek(struct Array array, bool_t* error) {
     Index* result = (Index*)array_peek(array, sizeof(Index));
     if (result == NULL) {
         *error = TRUE;

@@ -46,19 +46,19 @@ struct VM vm_make(struct VMConfig config) {
     return vm;
 }
 
-void vm_free(struct VM vm) {
-    tree_free(&vm.tree);
-    array_free(&vm.spine);
+void vm_free(struct VM* vm) {
+    tree_free(&vm->tree);
+    array_free(&vm->spine);
 }
 
-void vm_init(struct VM vm) {
-    spine_array_push(&vm.spine, node_get_indir(tree_get_node(vm.tree, 0)));
+void vm_init(struct VM* vm) {
+    spine_array_push(&vm->spine, 0);
 }
 
 enum StepState vm_step(struct VM* vm) {
     // Pop the top of the stack
     bool_t empty = FALSE;
-    Index top_index = spine_array_peek(&vm->spine, &empty);
+    Index top_index = spine_array_peek(vm->spine, &empty);
     if (empty == TRUE) {
         return Done;
     }
@@ -68,12 +68,18 @@ enum StepState vm_step(struct VM* vm) {
     enum NodeTag top_tag = node_get_tag(top_node);
     if (top_tag != App) {
         if (top_tag == Indirection) {
-            // There's nothing that can be done when an indirection is the top
-            // node. Go back one level and try again
-            spine_array_pop(&vm->spine, &empty);
+            if (top_index == 0) {
+                // If the top node is an indirection, it points to the root of
+                // the tree. Follow it
+                spine_array_push(&vm->spine, node_get_indir(top_node));
+            } else {
+                // There's nothing that can be done when an indirection is the
+                // top node. Go back one level and try again
+                spine_array_pop(&vm->spine, &empty);
+            }
             return Running;
         } else {
-            fail("PANIC! vm_step: invalid top tag: %d\n", top_tag);
+            return Done;
         }
     }
 
@@ -178,28 +184,29 @@ size_t vm_get_size(struct VM vm) {
 }
 
 // Serialize the VM's state into a byte array
-void vm_serialize(vm_write_fn write_fn, struct VM vm, size_t chunk_size) {
+void vm_serialize(vm_write_fn write_fn, struct VM vm, size_t chunk_size,
+    void* ctx)
+{
     size_t total_size = vm_get_size(vm);
     size_t written_total = 0;
     struct VMHeader header = vm_default_header;
     header.size = total_size;
-    write_fn(&header, sizeof(struct VMHeader));
+    write_fn(ctx, &header, sizeof(struct VMHeader));
     while (total_size > written_total) {
-        size_t written = write_fn(vm.tree.nodes.data + written_total,
-            chunk_size);
-        written_total += written;
+        written_total += write_fn(ctx, vm.tree.nodes.data + written_total,
+            min(total_size - written_total, chunk_size));
     }
 }
 
-enum VMResult vm_deserialize(struct VM* vm, vm_read_fn read_fn, uint8_t* data,
-    size_t chunk_size)
+enum VMResult vm_deserialize(struct VM* vm, vm_read_fn read_fn,
+    size_t chunk_size, void* ctx)
 {
     struct VMHeader header;
-    size_t read = read_fn(&header, sizeof(struct VMHeader));
+    size_t read = read_fn(ctx, &header, sizeof(struct VMHeader));
     if (read != sizeof(struct VMHeader)) {
         return VM_ERR_TRUNCATED;
     }
-    if (strcmp(header.magic, vm_default_header.magic) != 0) {
+    if (strncmp(header.magic, vm_default_header.magic, 4) != 0) {
         return VM_ERR_MAGIC_MISMATCH;
     }
     // TODO check version
@@ -209,6 +216,13 @@ enum VMResult vm_deserialize(struct VM* vm, vm_read_fn read_fn, uint8_t* data,
     struct VMConfig config = vm_default_config;
     config.initial_tree_capacity = header.size;
     *vm = vm_make(config);
+
+    size_t total = 0;
+    while (total < header.size) {
+        total += read_fn(ctx, vm->tree.nodes.data + total,
+            min(header.size - total, chunk_size));
+    }
+    vm->tree.nodes.size = total;
     return VM_OK;
 }
 
