@@ -28,7 +28,11 @@ void tree_free(struct Tree* tree) {
 Index tree_add_node(struct Tree* tree, enum NodeTag tag, Index left_child_index,
     Index right_child_index)
 {
-    Node new_node = node_make(tag, 1, left_child_index, right_child_index);
+    // Increase refcounts for the children
+    tree_incr_refcount(tree, left_child_index);
+    tree_incr_refcount(tree, right_child_index);
+
+    Node new_node = node_make(tag, 0, left_child_index, right_child_index);
     Index new_node_index = 0;
 
     // Check if the last node is a marker for empty space

@@ -54,6 +54,7 @@ void tc_set_top(Vm_h vm, Index index) {
     Node node = tree_get_node(vm->tree, 0);
     node_set_indir(&node, index);
     tree_set_node(&vm->tree, 0, node);
+    tree_incr_refcount(&vm->tree, index);
 }
 
 Node_h tc_get_node(Vm_h vm, Index index) {
