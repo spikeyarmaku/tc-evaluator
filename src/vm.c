@@ -10,8 +10,8 @@
 #include "debug.h"
 #include <string.h>
 
-const struct VMHeader vm_default_header = {"TCVM", 1, 0};
-const struct VMConfig vm_default_config = {1<<10, 1<<10};
+const struct VmHeader vm_default_header = {"TCVM", 1, 0};
+const struct VmConfig vm_default_config = {1<<10, 1<<10};
 
 static void     _apply_rules        (struct Tree* tree, Index top_index,
     Node top_node, Index left_child_index, Node left_child,
@@ -36,8 +36,8 @@ static void     _spine_print        (struct Array spine);
 
 // -----------------------------------------------------------------------------
 
-struct VM vm_make(struct VMConfig config) {
-    struct VM vm;
+struct Vm vm_make(struct VmConfig config) {
+    struct Vm vm;
     vm.tree = tree_make(config.initial_tree_capacity);
     vm.spine = spine_array_make(config.initial_spine_capacity);
 
@@ -46,16 +46,16 @@ struct VM vm_make(struct VMConfig config) {
     return vm;
 }
 
-void vm_free(struct VM* vm) {
+void vm_free(struct Vm* vm) {
     tree_free(&vm->tree);
     array_free(&vm->spine);
 }
 
-void vm_init(struct VM* vm) {
+void vm_init(struct Vm* vm) {
     spine_array_push(&vm->spine, 0);
 }
 
-enum StepState vm_step(struct VM* vm) {
+enum StepState vm_step(struct Vm* vm) {
     // Pop the top of the stack
     bool_t empty = FALSE;
     Index top_index = spine_array_peek(vm->spine, &empty);
@@ -167,7 +167,7 @@ enum StepState vm_step(struct VM* vm) {
     return Running;
 }
 
-void vm_run(struct VM* vm) {
+void vm_run(struct Vm* vm) {
     enum StepState state = Running;
 
     size_t counter = 0;
@@ -179,31 +179,31 @@ void vm_run(struct VM* vm) {
     }
 }
 
-size_t vm_get_size(struct VM vm) {
+size_t vm_get_size(struct Vm vm) {
     return vm.tree.nodes.size;
 }
 
 // Serialize the VM's state into a byte array
-void vm_serialize(vm_write_fn write_fn, struct VM vm, size_t chunk_size,
+void vm_serialize(vm_write_fn write_fn, struct Vm vm, size_t chunk_size,
     void* ctx)
 {
     size_t total_size = vm_get_size(vm);
     size_t written_total = 0;
-    struct VMHeader header = vm_default_header;
+    struct VmHeader header = vm_default_header;
     header.size = total_size;
-    write_fn(ctx, &header, sizeof(struct VMHeader));
+    write_fn(ctx, &header, sizeof(struct VmHeader));
     while (total_size > written_total) {
         written_total += write_fn(ctx, vm.tree.nodes.data + written_total,
             min(total_size - written_total, chunk_size));
     }
 }
 
-enum VMResult vm_deserialize(struct VM* vm, vm_read_fn read_fn,
+enum VmResult vm_deserialize(struct Vm* vm, vm_read_fn read_fn,
     size_t chunk_size, void* ctx)
 {
-    struct VMHeader header;
-    size_t read = read_fn(ctx, &header, sizeof(struct VMHeader));
-    if (read != sizeof(struct VMHeader)) {
+    struct VmHeader header;
+    size_t read = read_fn(ctx, &header, sizeof(struct VmHeader));
+    if (read != sizeof(struct VmHeader)) {
         return VM_ERR_TRUNCATED;
     }
     if (strncmp(header.magic, vm_default_header.magic, 4) != 0) {
@@ -213,7 +213,7 @@ enum VMResult vm_deserialize(struct VM* vm, vm_read_fn read_fn,
     // if (vm_check_version(header.version) != 0) {
     // return VM_ERR_UNSUPPORTED_VERSION
     // }
-    struct VMConfig config = vm_default_config;
+    struct VmConfig config = vm_default_config;
     config.initial_tree_capacity = header.size;
     *vm = vm_make(config);
 

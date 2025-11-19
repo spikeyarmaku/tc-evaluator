@@ -12,7 +12,7 @@ void print_indented(int amount, char* str) {
     printf("%s", str);
 }
 
-void print_tree(VM_h vm, Node_h node, int indent_level) {
+void print_tree(Vm_h vm, Node_h node, int indent_level) {
     switch (tc_get_node_type(node)) {
         case NODE_TYPE_LEAF: {
             printf("Leaf\n");
@@ -62,8 +62,8 @@ int main() {
 
     // First, we create a VM
     printf("> Create VM\n");
-    VM_h vm;
-    enum VMResult result = tc_make_vm(&vm, vm_default_config);
+    Vm_h vm;
+    enum VmResult result = tc_make_vm(&vm, vm_default_config);
     if (result != VM_OK) {
         printf("Error: %d\n", result);
         exit(EXIT_FAILURE);
