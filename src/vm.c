@@ -10,7 +10,7 @@
 #include "debug.h"
 #include <string.h>
 
-const struct VmHeader vm_default_header = {"TCVM", 1, 0};
+const struct VmHeader vm_default_header = {"TCVM", {1, 0}, 0};
 const struct VmConfig vm_default_config = {1<<10, 1<<10};
 
 static void     _apply_rules        (struct Tree* tree, Index top_index,
@@ -179,6 +179,14 @@ void vm_run(struct Vm* vm) {
     }
 }
 
+// void vm_compact(struct Vm* vm) {
+    // TODO
+    // Move the top non-null nodes of the node array to empty spaces
+    // Decrease refcounts of the overwritten node's children
+    // Rewrite indices pointing to these nodes in the node array
+    // Rewrite indices pointing to these nodes in the spine array
+// }
+
 size_t vm_get_size(struct Vm vm) {
     return vm.tree.nodes.size;
 }
@@ -209,10 +217,9 @@ enum VmResult vm_deserialize(struct Vm* vm, vm_read_fn read_fn,
     if (strncmp(header.magic, vm_default_header.magic, 4) != 0) {
         return VM_ERR_MAGIC_MISMATCH;
     }
-    // TODO check version
-    // if (vm_check_version(header.version) != 0) {
-    // return VM_ERR_UNSUPPORTED_VERSION
-    // }
+    if (header.version.major > vm_default_header.version.major) {
+        return VM_ERR_UNSUPPORTED_VERSION;
+    }
     struct VmConfig config = vm_default_config;
     config.initial_tree_capacity = header.size;
     *vm = vm_make(config);

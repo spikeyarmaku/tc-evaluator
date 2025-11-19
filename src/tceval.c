@@ -78,6 +78,10 @@ Index tc_get_right(Node_h node) {
     return node_get_right_child_index(*node);
 }
 
+// void tc_compact_vm(Vm_h vm) {
+//     vm_compact(vm);
+// }
+
 void tc_debug_print_tree(Vm_h vm) {
     tree_debug_print(vm->tree);
 }

@@ -1,7 +1,6 @@
 #ifndef TCEVAL_H
 #define TCEVAL_H
 
-#include <stdint.h>
 #include <stdlib.h>
 
 // --- Types ---
@@ -69,6 +68,7 @@ Index           tc_get_left     (Node_h node);
 Index           tc_get_right    (Node_h node);
 
 // Misc
+// void            tc_compact_vm   (Vm_h vm);
 void            tc_debug_print_tree (Vm_h vm);
 
 #endif
