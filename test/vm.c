@@ -1,16 +1,20 @@
 #include "test.h"
 
-#include "../vm.h"
+#include "../src/vm.h"
 #include <ctype.h>
 #include <string.h>
 
 size_t parse_expr(struct Tree* tree, const char **p);
 
-// Parse a single atom: either 't' or '(' expr ')'
-size_t parse_atom(struct Tree* tree, const char **p) {
+void parse_whitespace(const char **p) {
     while (isspace((unsigned char)**p)) {
         (*p)++;
     }
+}
+
+// Parse a single atom: either 't' or '(' expr ')'
+size_t parse_atom(struct Tree* tree, const char **p) {
+    parse_whitespace(p);
 
     if (**p == 't') {
         (*p)++;
@@ -35,10 +39,13 @@ size_t parse_expr(struct Tree* tree, const char **p) {
     size_t left = parse_atom(tree, p);
     while (1) {
         const char* save = *p;
-        while (isspace((unsigned char)**p)) (*p)++;
+        parse_whitespace(p);
         if (**p == 't' || **p == '(') {
             size_t right = parse_atom(tree, p);
-            left = tree_add_node(tree, App, left, right);
+            Index new_left = tree_add_node(tree, NODE_TAG_APP);
+            tree_change_child(tree, new_left, CHILD_SIDE_LEFT, left);
+            tree_change_child(tree, new_left, CHILD_SIDE_RIGHT, right);
+            left = new_left;
         } else {
             *p = save;
             break;
@@ -47,19 +54,17 @@ size_t parse_expr(struct Tree* tree, const char **p) {
     return left;
 }
 
-struct VM vm_parse(const char* str) {
-    struct Tree tree = tree_make();
-    tree_add_node(&tree, 0, 0, 0);
-    size_t last_index = parse_expr(&tree, &str);
-    Node node = node_make_empty();
-    tree_set_node(&tree, 0, tree_get_node(tree, last_index));
-    tree_set_node(&tree, last_index, node_make_empty());
-    struct VM vm = vm_make(tree);
+struct Vm vm_parse(const char* str) {
+    struct Vm vm = vm_make(vm_default_config);
+    size_t last_index = parse_expr(&vm.tree, &str);
+    printf("Last index: %lu\n", last_index);
+    tree_change_child(&vm.tree, 0, CHILD_SIDE_LEFT, last_index);
     return vm;
 }
 
 void check_eval(const char* src, const char* expected) {
-    struct VM vm = vm_parse(src);
+    struct Vm vm = vm_parse(src);
+    vm_init(&vm);
     vm_run(&vm);
     char buffer[65536];
     tree_print(vm.tree, buffer, TRUE);
@@ -72,7 +77,7 @@ void check_eval(const char* src, const char* expected) {
     check(buffer, result);
 }
 
-void vm_test() {
+void test() {
     printf("Simple trees\n");
     check_eval("t",     "t");
     check_eval("tt",    "tt");
@@ -143,4 +148,6 @@ void vm_test() {
     printf("A collection of trees that didn't reduce correctly in earlier versions\n");
     check_eval("t(t(t(tt)))t(ttt)", "t(t(ttt))t");
     check_eval("t(t(ttt)tt)(tt)",   "tt(tt)");
+    check_eval("(t (t t) (t t)) (t( t t) (t t))", "t(t(tt)(tt))(tt(t(tt)(tt)))");
+    check_eval("(t (t t) t) (t( t t) t)", "t(t(tt)t)(t(t(tt)t))");
 }

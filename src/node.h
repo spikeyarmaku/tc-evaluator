@@ -36,38 +36,37 @@ typedef struct NodeData {
 } Node;
 
 enum NodeTag {
-    Indirection = 0,
-    Stem        = 1,
-    Fork        = 2,
-    App         = 3
+    NODE_TAG_INDIR  = 0,
+    NODE_TAG_STEM   = 1,
+    NODE_TAG_FORK   = 2,
+    NODE_TAG_APP    = 3
 };
 
 // Create
-Node            node_make                   (enum NodeTag tag, size_t refcount,
+Node            node_make               (enum NodeTag tag, size_t refcount,
     Index left, Index right);
-Node            node_make_empty             ();
+Node            node_make_empty         ();
 
 // Compare
-bool_t          node_is_equal               (Node node0, Node node1);
-bool_t          node_is_empty               (Node node);
+bool_t          node_is_equal           (Node node0, Node node1);
+bool_t          node_is_empty           (Node node);
 
 // Get
-Index           node_get_indir              (Node node);
-enum NodeTag    node_get_tag                (Node node);
-uint32_t        node_get_refcount           (Node node);
-Index           node_get_left_child_index   (Node node);
-Index           node_get_right_child_index  (Node node);
+Index           node_get_indir          (Node node);
+enum NodeTag    node_get_tag            (Node node);
+uint32_t        node_get_refcount       (Node node);
+Index           node_get_child_index    (Node node, enum ChildSide side);
 
 // Set
-void            node_set_indir              (Node* node, Index index);
-void            node_set_tag                (Node* node, enum NodeTag tag);
-void            node_set_refcount           (Node* node, uint32_t refcount);
-void            node_set_left_child_index   (Node* node, Index left);
-void            node_set_right_child_index  (Node* node, Index right);
+void            node_set_indir          (Node* node, Index index);
+void            node_set_tag            (Node* node, enum NodeTag tag);
+void            node_set_refcount       (Node* node, uint32_t refcount);
+void            node_set_child_index    (Node* node, Index index,
+    enum ChildSide side);
 
-void            node_incr_refcount          (Node* node);
-void            node_decr_refcount          (Node* node);
+void            node_incr_refcount      (Node* node);
+void            node_decr_refcount      (Node* node);
 
-int             node_print                  (char* buffer, Node node);
+int             node_print              (char* buffer, Node node);
 
 #endif

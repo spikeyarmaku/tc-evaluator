@@ -32,26 +32,7 @@ The example at `examples/main.c` shows a basic way of using this lib. It shows h
 - Run the reduction process
 - Query the resulting structure
 
-Output:
-```
-=== Example TC program ===
-> Create VM
-> Add nodes
-App
-    ├ Fork
-        ├ Stem
-            └ Leaf
-        └ Leaf
-    └ Leaf
-> Save VM to file
-> Load VM from file
-> Run VM
-> Query the result
-Fork
-    ├ Leaf
-    └ Stem
-        └ Leaf
-```
+The comments give more information for each operation.
 
 ## Acknowledgements
 

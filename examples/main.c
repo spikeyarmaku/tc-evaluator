@@ -21,8 +21,8 @@ void print_tree(Vm_h vm, Node_h node, int indent_level) {
         case NODE_TYPE_STEM: {
             printf("Stem\n");
             print_indented((indent_level + 1) * INDENT_SIZE, "└ ");
-            print_tree(vm, tc_get_node(vm, tc_get_left(node)),
-                indent_level + 1);
+            print_tree(vm, tc_get_node(vm, tc_get_node_child(node,
+                CHILD_SIDE_LEFT)), indent_level + 1);
             break;
         }
         case NODE_TYPE_FORK:
@@ -33,11 +33,11 @@ void print_tree(Vm_h vm, Node_h node, int indent_level) {
                 printf("App\n");
             }
             print_indented((indent_level + 1) * INDENT_SIZE, "├ ");
-            print_tree(vm, tc_get_node(vm, tc_get_left(node)),
-                indent_level + 1);
+            print_tree(vm, tc_get_node(vm, tc_get_node_child(node,
+                CHILD_SIDE_LEFT)), indent_level + 1);
             print_indented((indent_level + 1) * INDENT_SIZE, "└ ");
-            print_tree(vm, tc_get_node(vm, tc_get_right(node)),
-                indent_level + 1);
+            print_tree(vm, tc_get_node(vm, tc_get_node_child(node,
+                CHILD_SIDE_RIGHT)), indent_level + 1);
             break;
         }
         default: {
@@ -82,6 +82,7 @@ int main() {
     tc_set_top(vm, index);
     // Print the tree to check if everything is correct
     print_tree(vm, tc_get_top(vm), 0);
+    tc_debug_print_tree(vm);
 
     // Now we save the VM to a file. In order to do this, the library asks for a
     // callback. Our callback will get a file via the context pointer, and
@@ -114,4 +115,5 @@ int main() {
     // We will start from the top, so we need to query it
     Node_h top = tc_get_top(vm);
     print_tree(vm, top, 0);
+    tc_debug_print_tree(vm);
 }

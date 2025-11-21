@@ -34,10 +34,13 @@ Index tc_add_node(Vm_h vm, enum NodeType type, Index left, Index right) {
     if (type == NODE_TYPE_LEAF) {
         return 0;
     }
-    return tree_add_node(&vm->tree, (enum NodeTag)type, left, right);
+    Index index = tree_add_node(&vm->tree, (enum NodeTag)type);
+    tree_change_child(&vm->tree, index, CHILD_SIDE_LEFT, left);
+    tree_change_child(&vm->tree, index, CHILD_SIDE_RIGHT, right);
+    return index;
 }
 
-enum StepState tc_step(Vm_h vm) {
+enum VmState tc_step(Vm_h vm) {
     return vm_step(vm);
 }
 
@@ -51,10 +54,7 @@ Node_h tc_get_top(Vm_h vm) {
 }
 
 void tc_set_top(Vm_h vm, Index index) {
-    Node node = tree_get_node(vm->tree, 0);
-    node_set_indir(&node, index);
-    tree_set_node(&vm->tree, 0, node);
-    tree_incr_refcount(&vm->tree, index);
+    tree_change_child(&vm->tree, 0, CHILD_SIDE_LEFT, index);
 }
 
 Node_h tc_get_node(Vm_h vm, Index index) {
@@ -71,12 +71,8 @@ enum NodeType tc_get_node_type(Node_h node) {
     return (enum NodeType)node_get_tag(*node);
 }
 
-Index tc_get_left(Node_h node) {
-    return node_get_left_child_index(*node);
-}
-
-Index tc_get_right(Node_h node) {
-    return node_get_right_child_index(*node);
+Index tc_get_node_child(Node_h node, enum ChildSide side) {
+    return node_get_child_index(*node, side);
 }
 
 // void tc_compact_vm(Vm_h vm) {

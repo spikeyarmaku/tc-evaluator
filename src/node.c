@@ -50,12 +50,12 @@ bool_t node_is_equal(Node node0, Node node1) {
 }
 
 Index node_get_indir(Node node) {
-    return node_get_left_child_index(node);
+    return node_get_child_index(node, CHILD_SIDE_LEFT);
 }
 
 void node_set_indir(Node* node, Index index) {
-    node_set_tag(node, Indirection);
-    node_set_left_child_index(node, index);
+    node_set_tag(node, NODE_TAG_INDIR);
+    node_set_child_index(node, index, CHILD_SIDE_LEFT);
 }
 
 bool_t node_is_empty(Node node) {
@@ -97,36 +97,31 @@ void node_set_tag(Node* node, enum NodeTag tag) {
     node->left = set_masked(node->left, tag, TAG_MASK);
 }
 
-Index node_get_left_child_index(Node node) {
-    return node.left >> 16;
+Index node_get_child_index(Node node, enum ChildSide side) {
+    if (side == CHILD_SIDE_LEFT) {
+        return node.left >> 16;
+    } else {
+        return node.right >> 16;
+    }
 }
 
-Index node_get_right_child_index(Node node) {
-    return node.right >> 16;
-}
-
-void node_set_left_child_index(Node* node, Index left) {
-    node->left =
-        set_masked(node->left, left << 16, (((size_t)1 << 48) - 1) << 16);
-}
-
-void node_set_right_child_index(Node* node, Index right) {
-    node->right =
-        set_masked(node->right, right << 16, (((size_t)1 << 48) - 1) << 16);
+void node_set_child_index(Node* node, Index index, enum ChildSide side) {
+    if (side == CHILD_SIDE_LEFT) {
+        node->left =
+            set_masked(node->left, index << 16, (((size_t)1 << 48) - 1) << 16);
+    } else {
+        node->right =
+            set_masked(node->right, index << 16, (((size_t)1 << 48) - 1) << 16);
+    }
 }
 
 int node_print(char* buffer, Node node) {
     int char_count = 0;
     char* tags[] = {"I", "S", "F", "A"};
     enum NodeTag tag = node_get_tag(node);
-    if (tag == Indirection) {
-        char_count = sprintf(buffer, "%s[%u].%lu", tags[tag],
-            node_get_refcount(node), node_get_indir(node));
-    } else {
-        char_count = sprintf(buffer, "%s[%u].%lu.%lu", tags[tag],
-            node_get_refcount(node), node_get_left_child_index(node),
-            node_get_right_child_index(node));
-    }
+    char_count = sprintf(buffer, "%s[%u].%lu.%lu", tags[tag],
+        node_get_refcount(node), node_get_child_index(node,
+            CHILD_SIDE_LEFT), node_get_child_index(node, CHILD_SIDE_RIGHT));
     buffer[char_count] = 0;
     return char_count;
 }

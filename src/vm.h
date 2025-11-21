@@ -4,7 +4,10 @@
 #include "tree.h"
 #include "../include/tceval.h"
 
-enum StepState {Done, Running};
+enum VmState {
+    VM_STATE_DONE,
+    VM_STATE_RUNNING
+};
 
 struct Vm {
     struct Tree tree; // Node array
@@ -25,7 +28,7 @@ struct VmHeader {
 struct Vm       vm_make         (struct VmConfig config);
 void            vm_free         (struct Vm* vm);
 void            vm_init         (struct Vm* vm);
-enum StepState  vm_step         (struct Vm* vm);
+enum VmState    vm_step         (struct Vm* vm);
 void            vm_run          (struct Vm* vm);
 // void            vm_compact      (struct Vm* vm);
 size_t          vm_get_size     (struct Vm vm);

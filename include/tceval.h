@@ -31,6 +31,11 @@ enum VmResult {
     VM_ERR_TRUNCATED
 };
 
+enum ChildSide {
+    CHILD_SIDE_LEFT,
+    CHILD_SIDE_RIGHT
+};
+
 // --- Constants ---
 
 extern const struct VmConfig vm_default_config;
@@ -55,7 +60,7 @@ Index           tc_add_node     (Vm_h vm, enum NodeType type, Index left,
     Index right);
 
 // Reduction methods
-enum StepState  tc_step         (Vm_h vm); // Evaluate one step
+enum VmState    tc_step         (Vm_h vm); // Evaluate one step
 void            tc_run          (Vm_h vm); // Run evaluation to the end
 
 // Query methods
@@ -64,8 +69,7 @@ void            tc_set_top      (Vm_h vm, Index index);
 Node_h          tc_get_node     (Vm_h vm, Index index); // Get node by index
 enum NodeType   tc_get_node_type    (Node_h node); // Get a node's type tag
 // Get the index of a node's child
-Index           tc_get_left     (Node_h node);
-Index           tc_get_right    (Node_h node);
+Index           tc_get_node_child   (Node_h node, enum ChildSide side);
 
 // Misc
 // void            tc_compact_vm   (Vm_h vm);

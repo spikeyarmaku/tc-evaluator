@@ -17,14 +17,19 @@ struct Tree {
 
 struct Tree tree_make               (size_t capacity);
 void        tree_free               (struct Tree* tree);
-Index       tree_add_node           (struct Tree* tree, enum NodeTag tag,
-    Index left_child_index, Index right_child_index);
+Index       tree_add_node           (struct Tree* tree, enum NodeTag tag);
 Node        tree_get_node           (struct Tree tree, Index index);
 Node*       tree_get_node_ref       (struct Tree tree, Index index);
-void        tree_set_node           (struct Tree* tree, Index index, Node node);
-void        tree_incr_refcount      (struct Tree* tree, Index index);
-void        tree_decr_refcount      (struct Tree* tree, Index index);
-void        tree_delete_children    (struct Tree* tree, Index index);
+void        tree_move_child         (struct Tree* tree, Index from_index,
+    enum ChildSide from_side, Index to_index, enum ChildSide to_side);
+void        tree_copy_child         (struct Tree* tree, Index from_index,
+    enum ChildSide from_side, Index to_index, enum ChildSide to_side);
+void        tree_change_child       (struct Tree* tree, Index index,
+    enum ChildSide side, Index new_index);
+void        tree_detach_child       (struct Tree* tree, Index index,
+    enum ChildSide side);
+void        tree_change_tag         (struct Tree* tree, Index index,
+    enum NodeTag tag);
 
 size_t      tree_get_node_count     (struct Tree tree);
 void        tree_print              (struct Tree tree, char* buffer,

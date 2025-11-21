@@ -42,7 +42,7 @@ struct Vm vm_make(struct VmConfig config) {
     vm.spine = spine_array_make(config.initial_spine_capacity);
 
     // The first node of the tree is a pointer to the top of the tree
-    tree_add_node(&vm.tree, Indirection, 0, 0);
+    tree_add_node(&vm.tree, NODE_TAG_INDIR);
     return vm;
 }
 
@@ -55,53 +55,61 @@ void vm_init(struct Vm* vm) {
     spine_array_push(&vm->spine, 0);
 }
 
-enum StepState vm_step(struct Vm* vm) {
+enum VmState vm_step(struct Vm* vm) {
     // Pop the top of the stack
     bool_t empty = FALSE;
     Index top_index = spine_array_peek(vm->spine, &empty);
     if (empty == TRUE) {
-        return Done;
+        return VM_STATE_DONE;
     }
 
     // Check the current node. If it is not an App, we're done
     Node top_node = tree_get_node(vm->tree, top_index);
     enum NodeTag top_tag = node_get_tag(top_node);
-    if (top_tag != App) {
-        if (top_tag == Indirection) {
+    if (top_tag != NODE_TAG_APP) {
+        if (top_tag == NODE_TAG_INDIR) {
             if (top_index == 0) {
-                // If the top node is an indirection, it points to the root of
-                // the tree. Follow it
-                spine_array_push(&vm->spine, node_get_indir(top_node));
+                Index indir_index = node_get_indir(top_node);
+                if (indir_index == 0) {
+                    return VM_STATE_DONE;
+                }
+                Node indir_node = tree_get_node(vm->tree, indir_index);
+                if (node_get_tag(indir_node) != NODE_TAG_INDIR) {
+                    // If the top node is an indirection, it points to the root
+                    // of the tree. Follow it
+                    spine_array_push(&vm->spine, node_get_indir(top_node));
+                } else {
+                    tree_change_child(&vm->tree, top_index, CHILD_SIDE_LEFT,
+                        node_get_indir(indir_node));
+                }
             } else {
                 // There's nothing that can be done when an indirection is the
                 // top node. Go back one level and try again
                 spine_array_pop(&vm->spine, &empty);
             }
-            return Running;
+            return VM_STATE_RUNNING;
         } else {
-            return Done;
+            return VM_STATE_DONE;
         }
     }
 
     // Check the right child. If it is an App, reduce it
-    Index right_child_index = node_get_right_child_index(top_node);
+    Index right_child_index = node_get_child_index(top_node, CHILD_SIDE_RIGHT);
     Node right_child;
     if (right_child_index != 0) {
         right_child = tree_get_node(vm->tree, right_child_index);
         switch (node_get_tag(right_child)) {
-            case App: {
+            case NODE_TAG_APP: {
                 spine_array_push(&vm->spine, right_child_index);
-                return Running;
+                return VM_STATE_RUNNING;
                 break;
             }
-            case Indirection: {
+            case NODE_TAG_INDIR: {
                 debug("Invoking indirection rule (right-side)\n");
                 // A a Ib -> Aab
-                Index indir_index = node_get_indir(right_child);
-                tree_decr_refcount(&vm->tree, right_child_index);
-                node_set_right_child_index(&top_node, indir_index);
-                tree_set_node(&vm->tree, top_index, top_node);
-                return Running;
+                tree_move_child(&vm->tree, right_child_index, CHILD_SIDE_LEFT,
+                    top_index, CHILD_SIDE_RIGHT);
+                return VM_STATE_RUNNING;
                 break;
             }
             default: {
@@ -111,50 +119,43 @@ enum StepState vm_step(struct Vm* vm) {
     }
 
     // Get the left child and apply the reduction rules to the two children
-    Index left_child_index = node_get_left_child_index(top_node);
+    Index left_child_index = node_get_child_index(top_node, CHILD_SIDE_LEFT);
     if (left_child_index == 0) {
         debug("Invoking rule 0a\n");
         // A L b -> Sb
         // Left child is a leaf - make a stem
-        node_set_tag(&top_node, Stem);
-        node_set_left_child_index(&top_node, right_child_index);
-        node_set_right_child_index(&top_node, 0);
-        tree_set_node(&vm->tree, top_index, top_node);
+        tree_move_child(&vm->tree, top_index, CHILD_SIDE_RIGHT, top_index,
+            CHILD_SIDE_LEFT);
+        tree_change_tag(&vm->tree, top_index, NODE_TAG_STEM);
         spine_array_pop(&vm->spine, &empty);
     } else {
         Node left_child = tree_get_node(vm->tree, left_child_index);
         switch (node_get_tag(left_child)) {
-            case Indirection: {
+            case NODE_TAG_INDIR: {
                 debug("Invoking indirection rule (left side)\n");
                 // A Ia b -> Aab
-                Index indir_index = node_get_indir(left_child);
-                tree_decr_refcount(&vm->tree, left_child_index);
-                node_set_left_child_index(&top_node, indir_index);
-                tree_set_node(&vm->tree, top_index, top_node);
+                tree_move_child(&vm->tree, left_child_index, CHILD_SIDE_LEFT,
+                    top_index, CHILD_SIDE_LEFT);
                 break;
             }
-            case Stem: {
+            case NODE_TAG_STEM: {
                 debug("Invoking rule 0b\n");
                 // A Sa b -> Fab
                 // Left child is a stem - make a fork
-                tree_decr_refcount(&vm->tree, left_child_index);
-                Index node_a_index = node_get_left_child_index(left_child);
-                node_set_tag(&top_node, Fork);
-                node_set_left_child_index(&top_node, node_a_index);
-                node_set_right_child_index(&top_node, right_child_index);
-                tree_incr_refcount(&vm->tree, node_a_index);
-                tree_set_node(&vm->tree, top_index, top_node);
+                tree_change_tag(&vm->tree, top_index, NODE_TAG_FORK);
+                tree_move_child(&vm->tree, left_child_index, CHILD_SIDE_LEFT,
+                    top_index, CHILD_SIDE_LEFT);
                 spine_array_pop(&vm->spine, &empty);
                 break;
             }
-            case Fork: {
+            case NODE_TAG_FORK: {
                 _apply_rules(&vm->tree, top_index, top_node, left_child_index,
                     left_child, right_child_index, right_child);
                 break;
             }
-            case App: {
+            case NODE_TAG_APP: {
                 spine_array_push(&vm->spine, left_child_index);
-                return Running;
+                return VM_STATE_RUNNING;
                 break;
             }
             default: {
@@ -164,14 +165,14 @@ enum StepState vm_step(struct Vm* vm) {
             }
         }
     }
-    return Running;
+    return VM_STATE_RUNNING;
 }
 
 void vm_run(struct Vm* vm) {
-    enum StepState state = Running;
+    enum VmState state = VM_STATE_RUNNING;
 
     size_t counter = 0;
-    while (state == Running) {
+    while (state == VM_STATE_RUNNING) {
         debug("--- STEP %lu ---\n", counter++);
         // tree_debug_print(vm->tree);
         // _spine_print(vm->spine);
@@ -240,21 +241,22 @@ static void _apply_rules(struct Tree* tree, Index top_index, Node top_node,
     Node right_child)
 {
     debug("Top index: %lu\n", top_index);
-    if (node_get_left_child_index(left_child) == 0) {
+    if (node_get_child_index(left_child, CHILD_SIDE_LEFT) == 0) {
         // Rule 1
         _apply_rule_1(tree, top_index, top_node, left_child_index, left_child,
             right_child_index);
     } else {
-        Index left_of_left_index = node_get_left_child_index(left_child);
+        Index left_of_left_index = node_get_child_index(left_child,
+            CHILD_SIDE_LEFT);
         Node left_of_left_child = tree_get_node(*tree, left_of_left_index);
         switch (node_get_tag(left_of_left_child)) {
-            case Stem: {
+            case NODE_TAG_STEM: {
                 // Rule 2
                 _apply_rule_2(tree, top_index, top_node, left_child_index,
                     left_child, right_child_index);
                 break;
             }
-            case Fork: {
+            case NODE_TAG_FORK: {
                 // Rule 3a-3c
                 if (right_child_index == 0) {
                     // Rule 3a
@@ -262,14 +264,14 @@ static void _apply_rules(struct Tree* tree, Index top_index, Node top_node,
                         left_child);
                 } else {
                     switch (node_get_tag(right_child)) {
-                        case Stem: {
+                        case NODE_TAG_STEM: {
                             // Rule 3b
                             _apply_rule_3b(tree, top_index, top_node,
                                 left_child_index, left_child, right_child_index,
                                 right_child);
                             break;
                         }
-                        case Fork: {
+                        case NODE_TAG_FORK: {
                             // Rule 3c
                             _apply_rule_3c(tree, top_index, top_node,
                                 left_child_index, left_child, right_child_index,
@@ -308,12 +310,10 @@ static void _apply_rule_1(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child, Index right_child_index)
 {
     debug("Invoking rule 1\n");
-    Index node_c_index = node_get_right_child_index(left_child);
-    node_set_indir(&top_node, node_c_index);
-    tree_set_node(tree, top_index, top_node);
-    tree_incr_refcount(tree, node_c_index);
-    tree_decr_refcount(tree, left_child_index);
-    tree_decr_refcount(tree, right_child_index);
+    tree_detach_child(tree, top_index, CHILD_SIDE_RIGHT);
+    tree_move_child(tree, left_child_index, CHILD_SIDE_RIGHT, top_index,
+        CHILD_SIDE_LEFT);
+    tree_change_tag(tree, top_index, NODE_TAG_INDIR);
 }
 
 // Rule 2
@@ -330,23 +330,19 @@ static void _apply_rule_2(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child, Index right_child_index)
 {
     debug("Invoking rule 2\n");
-    Index node_S_index = node_get_left_child_index(left_child);
-    Node node_S = tree_get_node(*tree, node_S_index);
-    Index node_a_index = node_get_left_child_index(node_S);
-    Index node_c_index = node_get_right_child_index(left_child);
-    Index left_app_index = tree_add_node(tree, App, node_a_index,
-        right_child_index);
-    Index right_app_index = tree_add_node(tree, App, node_c_index,
-        right_child_index);
-    node_set_left_child_index(&top_node, left_app_index);
-    node_set_right_child_index(&top_node, right_app_index);
-    tree_set_node(tree, top_index, top_node);
-    tree_incr_refcount(tree, node_a_index);
-    tree_incr_refcount(tree, node_c_index);
-    tree_incr_refcount(tree, right_child_index);
-    tree_incr_refcount(tree, right_child_index);
-    tree_decr_refcount(tree, left_child_index);
-    tree_decr_refcount(tree, right_child_index);
+    Index node_S_index = node_get_child_index(left_child, CHILD_SIDE_LEFT);
+    Index left_app_index = tree_add_node(tree, NODE_TAG_APP);
+    Index right_app_index = tree_add_node(tree, NODE_TAG_APP);
+    tree_move_child(tree, node_S_index, CHILD_SIDE_LEFT, left_app_index,
+        CHILD_SIDE_LEFT);
+    tree_move_child(tree, left_child_index, CHILD_SIDE_RIGHT, right_app_index,
+        CHILD_SIDE_LEFT);
+    tree_copy_child(tree, top_index, CHILD_SIDE_RIGHT, left_app_index,
+        CHILD_SIDE_RIGHT);
+    tree_move_child(tree, top_index, CHILD_SIDE_RIGHT, right_app_index,
+        CHILD_SIDE_RIGHT);
+    tree_change_child(tree, top_index, CHILD_SIDE_LEFT, left_app_index);
+    tree_change_child(tree, top_index, CHILD_SIDE_RIGHT, right_app_index);
 }
 
 // Rule 3a
@@ -365,14 +361,12 @@ static void _apply_rule_3a(struct Tree* tree, Index top_index, Node top_node,
     Index left_child_index, Node left_child)
 {
     debug("Invoking rule 3a\n");
-    Index node_lower_F_index = node_get_left_child_index(left_child);
-    Node node_lower_F = tree_get_node(*tree, node_lower_F_index);
-    Index node_a_index = node_get_left_child_index(node_lower_F);
-    node_set_indir(&top_node, node_a_index);
-    node_set_right_child_index(&top_node, node_a_index);
-    tree_set_node(tree, top_index, top_node);
-    tree_incr_refcount(tree, node_a_index);
-    tree_decr_refcount(tree, left_child_index);
+    Index node_lower_F_index = node_get_child_index(left_child,
+        CHILD_SIDE_LEFT);
+    tree_detach_child(tree, top_index, CHILD_SIDE_RIGHT);
+    tree_move_child(tree, node_lower_F_index, CHILD_SIDE_LEFT, top_index,
+        CHILD_SIDE_LEFT);
+    tree_change_tag(tree, top_index, NODE_TAG_INDIR);
 }
 
 // Rule 3b
@@ -389,17 +383,12 @@ static void _apply_rule_3b(struct Tree* tree, Index top_index, Node top_node,
     Node right_child)
 {
     debug("Invoking rule 3b\n");
-    Index node_lower_F_index = node_get_left_child_index(left_child);
-    Node node_lower_f = tree_get_node(*tree, node_lower_F_index);
-    Index node_b_index = node_get_right_child_index(node_lower_f);
-    Index node_u_index = node_get_left_child_index(right_child);
-    node_set_left_child_index(&top_node, node_b_index);
-    node_set_right_child_index(&top_node, node_u_index);
-    tree_set_node(tree, top_index, top_node);
-    tree_incr_refcount(tree, node_b_index);
-    tree_incr_refcount(tree, node_u_index);
-    tree_decr_refcount(tree, left_child_index);
-    tree_decr_refcount(tree, right_child_index);
+    Index node_lower_F_index = node_get_child_index(left_child,
+        CHILD_SIDE_LEFT);
+    tree_move_child(tree, node_lower_F_index, CHILD_SIDE_RIGHT, top_index,
+        CHILD_SIDE_LEFT);
+    tree_move_child(tree, right_child_index, CHILD_SIDE_LEFT, top_index,
+        CHILD_SIDE_RIGHT);
 }
 
 // Rule 3c
@@ -417,18 +406,14 @@ static void _apply_rule_3c(struct Tree* tree, Index top_index, Node top_node,
     Node right_child)
 {
     debug("Invoking rule 3c\n");
-    Index node_c_index = node_get_right_child_index(left_child);
-    Index node_u_index = node_get_left_child_index(right_child);
-    Index node_v_index = node_get_right_child_index(right_child);
-    Index left_app_index = tree_add_node(tree, App, node_c_index, node_u_index);
-    node_set_left_child_index(&top_node, left_app_index);
-    node_set_right_child_index(&top_node, node_v_index);
-    tree_set_node(tree, top_index, top_node);
-    tree_incr_refcount(tree, node_c_index);
-    tree_incr_refcount(tree, node_u_index);
-    tree_incr_refcount(tree, node_v_index);
-    tree_decr_refcount(tree, left_child_index);
-    tree_decr_refcount(tree, right_child_index);
+    Index left_app_index = tree_add_node(tree, NODE_TAG_APP);
+    tree_move_child(tree, left_child_index, CHILD_SIDE_RIGHT, left_app_index,
+        CHILD_SIDE_LEFT);
+    tree_move_child(tree, right_child_index, CHILD_SIDE_LEFT, left_app_index,
+        CHILD_SIDE_RIGHT);
+    tree_change_child(tree, top_index, CHILD_SIDE_LEFT, left_app_index);
+    tree_move_child(tree, right_child_index, CHILD_SIDE_RIGHT, top_index,
+        CHILD_SIDE_RIGHT);
 }
 
 static void _spine_print(struct Array spine) {
