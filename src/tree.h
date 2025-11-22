@@ -20,8 +20,6 @@ void        tree_free               (struct Tree* tree);
 Index       tree_add_node           (struct Tree* tree, enum NodeTag tag);
 Node        tree_get_node           (struct Tree tree, Index index);
 Node*       tree_get_node_ref       (struct Tree tree, Index index);
-void        tree_move_child         (struct Tree* tree, Index from_index,
-    enum ChildSide from_side, Index to_index, enum ChildSide to_side);
 void        tree_copy_child         (struct Tree* tree, Index from_index,
     enum ChildSide from_side, Index to_index, enum ChildSide to_side);
 void        tree_change_child       (struct Tree* tree, Index index,

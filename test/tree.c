@@ -18,22 +18,9 @@ void test() {
     // tree_print(tree);
     // tree_debug_print(tree);
 
-    // Move fork from one side of the App to the other
-    tree_move_child(&tree, app_index, CHILD_SIDE_LEFT, app_index,
+    tree_copy_child(&tree, app_index, CHILD_SIDE_LEFT, app_index,
         CHILD_SIDE_RIGHT);
     Node app_node = tree_get_node(tree, app_index);
-    Node fork_node = tree_get_node(tree, fork_index);
-    check("Check node move - index of App's left child",
-        node_get_child_index(app_node, CHILD_SIDE_LEFT) == 0);
-    check("Check node move - tag of App's right child",
-        node_get_tag(tree_get_node(tree, node_get_child_index(app_node,
-            CHILD_SIDE_RIGHT))) == NODE_TAG_FORK);
-    check("Check node move - refcount of App's right child",
-        node_get_refcount(tree_get_node(tree, node_get_child_index(app_node,
-            CHILD_SIDE_RIGHT))) == 1);
-    tree_copy_child(&tree, app_index, CHILD_SIDE_RIGHT, app_index,
-        CHILD_SIDE_LEFT);
-    app_node = tree_get_node(tree, app_index);
     check("Check node copy - tag of App's left child",
         node_get_tag(tree_get_node(tree, node_get_child_index(app_node,
             CHILD_SIDE_LEFT))) == NODE_TAG_FORK);

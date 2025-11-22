@@ -5,9 +5,6 @@
 #include "global.h"
 #include "node.h"
 
-void _tree_transfer_child(struct Tree* tree, Index from_index,
-    enum ChildSide from_side, Index to_index, enum ChildSide to_side,
-    bool_t copy);
 void _tree_incr_refcount(struct Tree* tree, Index index);
 void _tree_decr_refcount(struct Tree* tree, Index index);
 void _tree_delete_children(struct Tree* tree, Index index);
@@ -81,16 +78,13 @@ Node* tree_get_node_ref(struct Tree tree, Index index) {
     return node;
 }
 
-void tree_move_child(struct Tree* tree, Index from_index,
-    enum ChildSide from_side, Index to_index, enum ChildSide to_side)
-{
-    _tree_transfer_child(tree, from_index, from_side, to_index, to_side, FALSE);
-}
-
 void tree_copy_child(struct Tree* tree, Index from_index,
     enum ChildSide from_side, Index to_index, enum ChildSide to_side)
 {
-    _tree_transfer_child(tree, from_index, from_side, to_index, to_side, TRUE);
+    Node node = tree_get_node(*tree, from_index);
+    Index child_index = node_get_child_index(node, from_side);
+
+    tree_change_child(tree, to_index, to_side, child_index);
 }
 
 void tree_change_child(struct Tree* tree, Index index, enum ChildSide side,
@@ -177,20 +171,6 @@ bool_t tree_check_free_spaces(struct Tree tree, size_t* free_space_count) {
 }
 
 // ----------------------------- INTERNAL METHODS -----------------------------
-
-void _tree_transfer_child(struct Tree* tree, Index from_index,
-    enum ChildSide from_side, Index to_index, enum ChildSide to_side,
-    bool_t copy)
-{
-    Node node = tree_get_node(*tree, from_index);
-    Index child_index = node_get_child_index(node, from_side);
-
-    tree_change_child(tree, to_index, to_side, child_index);
-
-    if (copy == FALSE && node_get_refcount(node) <= 1) {
-        tree_change_child(tree, from_index, from_side, 0);
-    }
-}
 
 void _tree_incr_refcount(struct Tree* tree, Index index) {
     if (index == 0) {
