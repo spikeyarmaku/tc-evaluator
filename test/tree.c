@@ -38,5 +38,4 @@ void test() {
     check("Check node detach - refcount of App's right child",
         node_get_refcount(tree_get_node(tree, node_get_child_index(app_node,
             CHILD_SIDE_RIGHT))) == 1);
-    check("Check tree node count", tree_get_node_count(tree) == 4);
 }

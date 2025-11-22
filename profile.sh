@@ -1,11 +1,11 @@
-cmake -B build -DCMAKE_BUILD_TYPE=Profiling -DRUN_CABAL=on
-cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Profiling
+cmake --build build --target=benchmark
 
 # Memcheck:
-# valgrind --track-origins=yes build/TreeCalculusRuntime
+valgrind --track-origins=yes build/benchmark
 
 # Callgraph:
-valgrind --tool=callgrind --collect-jumps=yes build/TreeCalculusRuntime
+# valgrind --tool=callgrind --collect-jumps=yes build/benchmark
 
 # Heap profiling:
-# valgrind --tool=massif build/TreeCalculusRuntime
+# valgrind --tool=massif build/benchmark
