@@ -46,16 +46,16 @@ set(TEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test")
 
 add_executable(test_array "${TEST_DIR}/array.c")
 target_link_libraries(test_array PRIVATE tceval)
-add_test(NAME array COMMAND tceval_test_array)
+add_test(NAME array COMMAND test_array)
 
 add_executable(test_node "${TEST_DIR}/node.c")
 target_link_libraries(test_node PRIVATE tceval)
-add_test(NAME node COMMAND tceval_test_node)
+add_test(NAME node COMMAND test_node)
 
 add_executable(test_tree "${TEST_DIR}/tree.c")
 target_link_libraries(test_tree PRIVATE tceval)
-add_test(NAME tree COMMAND tceval_test_tree)
+add_test(NAME tree COMMAND test_tree)
 
 add_executable(test_vm "${TEST_DIR}/vm.c")
 target_link_libraries(test_vm PRIVATE tceval)
-add_test(NAME vm COMMAND tceval_test_vm)
+add_test(NAME vm COMMAND test_vm)

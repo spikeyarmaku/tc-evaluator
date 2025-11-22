@@ -13,7 +13,7 @@ void print_node_bits(Node node) {
 }
 
 void test() {
-    Node test = node_make(NODE_TAG_STEM, 1, 16, 0);
+    Node test = node_make(NODE_TAG_STEM, 1, 0, 16);
     // print_node_bits(test);
     check("Make a stem", node_get_tag(test) == NODE_TAG_STEM);
 

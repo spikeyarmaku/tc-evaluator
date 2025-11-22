@@ -110,8 +110,25 @@ void tree_change_tag(struct Tree* tree, Index index, enum NodeTag tag) {
     node_array_set(tree->nodes, index, node);
 }
 
+void tree_follow_indirection(struct Tree* tree, Index index,
+    enum ChildSide side)
+{
+    Node node = tree_get_node(*tree, index);
+    Index indir_index = node_get_child_index(node, side);
+    Node indir = tree_get_node(*tree, indir_index);
+    Index new_index = node_get_indir(indir);
+    node_set_child_index(&node, new_index, side);
+    node_array_set(tree->nodes, index, node);
+    if (node_get_refcount(indir) <= 1) {
+        node_set_indir(&indir, 0);
+    }
+    node_decr_refcount(&indir);
+    node_array_set(tree->nodes, indir_index, indir);
+}
+
 size_t tree_get_node_count(struct Tree tree) {
-    return _tree_get_node_count(tree, 0, TRUE);
+    // return _tree_get_node_count(tree, 0, TRUE);
+    return node_array_count(tree.nodes);
 }
 
 void tree_print(struct Tree tree, char* buffer, bool_t use_spaces) {
@@ -205,8 +222,8 @@ void _tree_delete_children(struct Tree* tree, Index index) {
     Node node = tree_get_node(*tree, index);
     switch (node_get_tag(node)) {
         case NODE_TAG_STEM: {
-            Index left = node_get_child_index(node, CHILD_SIDE_LEFT);
-            _tree_decr_refcount(tree, left);
+            _tree_decr_refcount(tree,
+                node_get_child_index(node, CHILD_SIDE_RIGHT));
             break;
         }
         case NODE_TAG_FORK:
@@ -236,7 +253,7 @@ size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root) {
         case NODE_TAG_STEM: {
             return 1 +
                 _tree_get_node_count(tree,
-                    node_get_child_index(node, CHILD_SIDE_LEFT), FALSE);
+                    node_get_child_index(node, CHILD_SIDE_RIGHT), FALSE);
             break;
         }
         case NODE_TAG_FORK: {
@@ -279,7 +296,7 @@ void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
         }
         case NODE_TAG_STEM: {
             strcat(buffer, "t");
-            Index left = node_get_child_index(top, CHILD_SIDE_LEFT);
+            Index left = node_get_child_index(top, CHILD_SIDE_RIGHT);
             if (use_spaces == TRUE) {
                 strcat(buffer, " ");
             }
@@ -354,7 +371,7 @@ void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root) {
         }
         case NODE_TAG_STEM: {
             printf("S");
-            Index left = node_get_child_index(top, CHILD_SIDE_LEFT);
+            Index left = node_get_child_index(top, CHILD_SIDE_RIGHT);
             _tree_print_comb_subtree(tree, left, FALSE);
             break;
         }

@@ -28,6 +28,8 @@ void        tree_detach_child       (struct Tree* tree, Index index,
     enum ChildSide side);
 void        tree_change_tag         (struct Tree* tree, Index index,
     enum NodeTag tag);
+void        tree_follow_indirection (struct Tree* tree, Index index,
+    enum ChildSide side);
 
 size_t      tree_get_node_count     (struct Tree tree);
 void        tree_print              (struct Tree tree, char* buffer,

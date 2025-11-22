@@ -107,8 +107,9 @@ enum VmState vm_step(struct Vm* vm) {
             case NODE_TAG_INDIR: {
                 debug("Invoking indirection rule (right-side)\n");
                 // A a Ib -> Aab
-                tree_copy_child(&vm->tree, right_child_index, CHILD_SIDE_LEFT,
-                    top_index, CHILD_SIDE_RIGHT);
+                tree_follow_indirection(&vm->tree, top_index, CHILD_SIDE_RIGHT);
+                // tree_copy_child(&vm->tree, right_child_index, CHILD_SIDE_LEFT,
+                //     top_index, CHILD_SIDE_RIGHT);
                 return VM_STATE_RUNNING;
                 break;
             }
@@ -124,8 +125,6 @@ enum VmState vm_step(struct Vm* vm) {
         debug("Invoking rule 0a\n");
         // A L b -> Sb
         // Left child is a leaf - make a stem
-        tree_copy_child(&vm->tree, top_index, CHILD_SIDE_RIGHT, top_index,
-            CHILD_SIDE_LEFT);
         tree_change_tag(&vm->tree, top_index, NODE_TAG_STEM);
         spine_array_pop(&vm->spine, &empty);
     } else {
@@ -134,8 +133,9 @@ enum VmState vm_step(struct Vm* vm) {
             case NODE_TAG_INDIR: {
                 debug("Invoking indirection rule (left side)\n");
                 // A Ia b -> Aab
-                tree_copy_child(&vm->tree, left_child_index, CHILD_SIDE_LEFT,
-                    top_index, CHILD_SIDE_LEFT);
+                tree_follow_indirection(&vm->tree, top_index, CHILD_SIDE_LEFT);
+                // tree_copy_child(&vm->tree, left_child_index, CHILD_SIDE_LEFT,
+                //     top_index, CHILD_SIDE_LEFT);
                 break;
             }
             case NODE_TAG_STEM: {
@@ -143,7 +143,7 @@ enum VmState vm_step(struct Vm* vm) {
                 // A Sa b -> Fab
                 // Left child is a stem - make a fork
                 tree_change_tag(&vm->tree, top_index, NODE_TAG_FORK);
-                tree_copy_child(&vm->tree, left_child_index, CHILD_SIDE_LEFT,
+                tree_copy_child(&vm->tree, left_child_index, CHILD_SIDE_RIGHT,
                     top_index, CHILD_SIDE_LEFT);
                 spine_array_pop(&vm->spine, &empty);
                 break;
@@ -173,12 +173,16 @@ void vm_run(struct Vm* vm) {
 
     size_t counter = 0;
     while (state == VM_STATE_RUNNING) {
-        debug("--- STEP %lu ---\n", counter++);
+        // printf("Step %lu\n", counter);
         // tree_debug_print(vm->tree);
         // _spine_print(vm->spine);
+        // printf("--- STEP %lu ---\n", counter);
         // tree_print_comb(vm->tree);
         state = vm_step(vm);
+        counter++;
     }
+
+    printf("%lu steps\n", counter);
 }
 
 // void vm_compact(struct Vm* vm) {
@@ -334,7 +338,7 @@ static void _apply_rule_2(struct Tree* tree, Index top_index, Node top_node,
     Index node_S_index = node_get_child_index(left_child, CHILD_SIDE_LEFT);
     Index left_app_index = tree_add_node(tree, NODE_TAG_APP);
     Index right_app_index = tree_add_node(tree, NODE_TAG_APP);
-    tree_copy_child(tree, node_S_index, CHILD_SIDE_LEFT, left_app_index,
+    tree_copy_child(tree, node_S_index, CHILD_SIDE_RIGHT, left_app_index,
         CHILD_SIDE_LEFT);
     tree_copy_child(tree, left_child_index, CHILD_SIDE_RIGHT, right_app_index,
         CHILD_SIDE_LEFT);
@@ -388,7 +392,7 @@ static void _apply_rule_3b(struct Tree* tree, Index top_index, Node top_node,
         CHILD_SIDE_LEFT);
     tree_copy_child(tree, node_lower_F_index, CHILD_SIDE_RIGHT, top_index,
         CHILD_SIDE_LEFT);
-    tree_copy_child(tree, right_child_index, CHILD_SIDE_LEFT, top_index,
+    tree_copy_child(tree, right_child_index, CHILD_SIDE_RIGHT, top_index,
         CHILD_SIDE_RIGHT);
 }
 
