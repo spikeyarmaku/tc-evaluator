@@ -64,7 +64,6 @@ enum VmState tc_step(Vm_h vm) {
 }
 
 void tc_run(Vm_h vm) {
-    vm_init(vm);
     vm_run(vm);
 }
 

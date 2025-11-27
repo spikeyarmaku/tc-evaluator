@@ -66,7 +66,6 @@ struct Vm vm_parse(const char* str) {
 
 void check_eval(const char* src, const char* expected) {
     struct Vm vm = vm_parse(src);
-    vm_init(&vm);
     vm_run(&vm);
     char buffer[65536];
     tree_print(vm.tree, buffer, TRUE);

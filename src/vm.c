@@ -1,5 +1,7 @@
 // TODO If there are no shared nodes in a rule, repurposing App nodes should be
 // fine
+// TODO Add support for user-defined evaluation rules for custom nodes
+// TODO Add ability to compact node array (e.g. before serializing)
 
 #include "vm.h"
 #include "array.h"
@@ -47,6 +49,7 @@ struct Vm vm_make(struct VmConfig config) {
 
     // The first node of the tree is a pointer to the top of the tree
     tree_add_node(&vm.tree, node_make(NODE_TYPE_INDIR, 1, 0, 0));
+    spine_array_push(&vm.spine, 0);
     return vm;
 }
 
@@ -55,15 +58,12 @@ void vm_free(struct Vm* vm) {
     array_free(&vm->spine);
 }
 
-void vm_init(struct Vm* vm) {
-    spine_array_push(&vm->spine, 0);
-}
-
 enum VmState vm_step(struct Vm* vm) {
     // Pop the top of the stack
     bool_t empty = FALSE;
     Index top_index = spine_array_peek(vm->spine, &empty);
     if (empty == TRUE) {
+        spine_array_push(&vm->spine, 0);
         return VM_STATE_DONE;
     }
 

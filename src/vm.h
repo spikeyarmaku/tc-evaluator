@@ -18,7 +18,6 @@ extern const struct VmConfig vm_default_config;
 
 struct Vm       vm_make         (struct VmConfig config);
 void            vm_free         (struct Vm* vm);
-void            vm_init         (struct Vm* vm);
 enum VmState    vm_step         (struct Vm* vm);
 void            vm_run          (struct Vm* vm);
 // void            vm_compact      (struct Vm* vm);
