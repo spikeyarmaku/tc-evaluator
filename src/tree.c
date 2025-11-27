@@ -5,13 +5,13 @@
 #include "global.h"
 #include "node.h"
 
-void _tree_incr_refcount(struct Tree* tree, Index index);
-void _tree_decr_refcount(struct Tree* tree, Index index);
-void _tree_delete_children(struct Tree* tree, Index index);
-void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
-    Index index, bool_t root);
-void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root);
-size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root);
+static void _tree_mark_empty(struct Tree* tree, Index index);
+static void _tree_delete_children(struct Tree* tree, Index index);
+static void _tree_print_subtree(struct Tree tree, char* buffer,
+    bool_t use_spaces, Index index, bool_t root);
+static void _tree_print_comb_subtree(struct Tree tree, Index index,
+    bool_t root);
+static size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root);
 
 // -----------------------------------------------------------------------------
 
@@ -27,10 +27,8 @@ void tree_free(struct Tree* tree) {
     tree->free_space_count = 0;
 }
 
-// Either allocate or reuse space for a new node, and fill it with data
-Index tree_add_node(struct Tree* tree, enum NodeTag tag) {
+Index tree_add_node(struct Tree* tree, Node node) {
     // Increase refcounts for the children
-    Node new_node = node_make(tag, 0, 0, 0);
     Index new_node_index = 0;
 
     // Check if the last node is a marker for empty space
@@ -45,10 +43,10 @@ Index tree_add_node(struct Tree* tree, enum NodeTag tag) {
 
     if (new_node_index != 0) {
         _tree_delete_children(tree, new_node_index);
-        node_array_set(tree->nodes, new_node_index, new_node);
+        node_array_set(tree->nodes, new_node_index, node);
         tree->free_space_count--;
     } else {
-        new_node_index = node_array_push(&tree->nodes, new_node);
+        new_node_index = node_array_push(&tree->nodes, node);
     }
 
     if (new_node_index >= CHILD_LIMIT) {
@@ -62,13 +60,17 @@ Node tree_get_node(struct Tree tree, Index index) {
     return node_array_get(tree.nodes, index);
 }
 
+void tree_set_node(struct Tree tree, Index index, Node node) {
+    node_array_set(tree.nodes, index, node);
+}
+
 // Since this is used by the API, skip over indirection nodes
 Node* tree_get_node_ref(struct Tree tree, Index index) {
     Node* node = node_array_get_ref(tree.nodes, index);
     if (node == NULL) {
         return NULL;
     }
-    while (node_get_tag(*node) == NODE_TAG_INDIR) {
+    while (node_get_type(*node) == NODE_TYPE_INDIR) {
         Index referenced_node_index = node_get_indir(*node);
         if (referenced_node_index == 0) {
             return NULL;
@@ -78,56 +80,7 @@ Node* tree_get_node_ref(struct Tree tree, Index index) {
     return node;
 }
 
-void tree_copy_child(struct Tree* tree, Index from_index,
-    enum ChildSide from_side, Index to_index, enum ChildSide to_side)
-{
-    Node node = tree_get_node(*tree, from_index);
-    Index child_index = node_get_child_index(node, from_side);
-
-    tree_change_child(tree, to_index, to_side, child_index);
-}
-
-void tree_change_child(struct Tree* tree, Index index, enum ChildSide side,
-    Index new_index)
-{
-    Node node = tree_get_node(*tree, index);
-    Index child_index = node_get_child_index(node, side);
-    _tree_decr_refcount(tree, child_index);
-    node_set_child_index(&node, new_index, side);
-    node_array_set(tree->nodes, index, node);
-    if (new_index != 0) {
-        _tree_incr_refcount(tree, new_index);
-    }
-}
-
-void tree_detach_child(struct Tree* tree, Index index, enum ChildSide side) {
-    tree_change_child(tree, index, side, 0);
-}
-
-void tree_change_tag(struct Tree* tree, Index index, enum NodeTag tag) {
-    Node node = tree_get_node(*tree, index);
-    node_set_tag(&node, tag);
-    node_array_set(tree->nodes, index, node);
-}
-
-void tree_follow_indirection(struct Tree* tree, Index index,
-    enum ChildSide side)
-{
-    Node node = tree_get_node(*tree, index);
-    Index indir_index = node_get_child_index(node, side);
-    Node indir = tree_get_node(*tree, indir_index);
-    Index new_index = node_get_indir(indir);
-    node_set_child_index(&node, new_index, side);
-    node_array_set(tree->nodes, index, node);
-    if (node_get_refcount(indir) <= 1) {
-        node_set_indir(&indir, 0);
-    }
-    node_decr_refcount(&indir);
-    node_array_set(tree->nodes, indir_index, indir);
-}
-
 size_t tree_get_node_count(struct Tree tree) {
-    // return _tree_get_node_count(tree, 0, TRUE);
     return node_array_count(tree.nodes);
 }
 
@@ -187,22 +140,21 @@ bool_t tree_check_free_spaces(struct Tree tree, size_t* free_space_count) {
     return TRUE;
 }
 
-// ----------------------------- INTERNAL METHODS -----------------------------
-
-void _tree_incr_refcount(struct Tree* tree, Index index) {
+void tree_incr_refcount(struct Tree* tree, Index index) {
     if (index == 0) {
         return;
     }
 
     Node node = tree_get_node(*tree, index);
-    if (node_get_refcount(node) == 0 && node_get_tag(node) == NODE_TAG_INDIR) {
+    if (node_get_refcount(node) == 0 && node_get_type(node) == NODE_TYPE_INDIR)
+    {
         tree->free_space_count--;
     }
-    node_incr_refcount(&node);
+    node = node_incr_refcount(node);
     node_array_set(tree->nodes, index, node);
 }
 
-void _tree_decr_refcount(struct Tree* tree, Index index) {
+void tree_decr_refcount(struct Tree* tree, Index index) {
     if (index == 0) {
         return;
     }
@@ -210,28 +162,36 @@ void _tree_decr_refcount(struct Tree* tree, Index index) {
     if (node_get_refcount(node) == 0) {
         return;
     }
-    node_decr_refcount(&node);
+    node = node_decr_refcount(node);
     node_array_set(tree->nodes, index, node);
     if (node_get_refcount(node) == 0) {
-        tree->free_space_count++;
-        node_array_push(&tree->nodes, node_make(0, 0, index, 0));
+        _tree_mark_empty(tree, index);
     }
 }
 
-void _tree_delete_children(struct Tree* tree, Index index) {
+void tree_delete_node(struct Tree* tree, Index index) {
+    tree_set_node(*tree, index, node_make_empty());
+    _tree_mark_empty(tree, index);
+}
+
+// ----------------------------- INTERNAL METHODS -----------------------------
+
+static void _tree_mark_empty(struct Tree* tree, Index index) {
+    tree->free_space_count++;
+    node_array_push(&tree->nodes, node_make(NODE_TYPE_INDIR, 0, 0, index));
+}
+
+static void _tree_delete_children(struct Tree* tree, Index index) {
     Node node = tree_get_node(*tree, index);
-    switch (node_get_tag(node)) {
-        case NODE_TAG_STEM: {
-            _tree_decr_refcount(tree,
-                node_get_child_index(node, CHILD_SIDE_RIGHT));
+    switch (node_get_type(node)) {
+        case NODE_TYPE_STEM: {
+            tree_decr_refcount(tree, node_get_child(node, CHILD_SINGLE));
             break;
         }
-        case NODE_TAG_FORK:
-        case NODE_TAG_APP: {
-            Index left = node_get_child_index(node, CHILD_SIDE_LEFT);
-            Index right = node_get_child_index(node, CHILD_SIDE_RIGHT);
-            _tree_decr_refcount(tree, left);
-            _tree_decr_refcount(tree, right);
+        case NODE_TYPE_FORK:
+        case NODE_TYPE_APP: {
+            tree_decr_refcount(tree, node_get_child(node, CHILD_SIDE_LEFT));
+            tree_decr_refcount(tree, node_get_child(node, CHILD_SIDE_RIGHT));
             break;
         }
         default: {
@@ -240,63 +200,23 @@ void _tree_delete_children(struct Tree* tree, Index index) {
     }
 }
 
-size_t _tree_get_node_count(struct Tree tree, Index index, bool_t root) {
-    if (root == FALSE && index == 0) {
-        return 1;
-    }
-    Node node = tree_get_node(tree, index);
-    switch (node_get_tag(node)) {
-        case NODE_TAG_INDIR: {
-            return _tree_get_node_count(tree, node_get_indir(node), FALSE);
-            break;
-        }
-        case NODE_TAG_STEM: {
-            return 1 +
-                _tree_get_node_count(tree,
-                    node_get_child_index(node, CHILD_SIDE_RIGHT), FALSE);
-            break;
-        }
-        case NODE_TAG_FORK: {
-            return 1 +
-                _tree_get_node_count(tree,
-                    node_get_child_index(node, CHILD_SIDE_LEFT), FALSE) +
-                _tree_get_node_count(tree,
-                    node_get_child_index(node, CHILD_SIDE_RIGHT), FALSE);
-            break;
-        }
-        case NODE_TAG_APP: {
-            return
-                _tree_get_node_count(tree,
-                    node_get_child_index(node, CHILD_SIDE_LEFT), FALSE) +
-                _tree_get_node_count(tree,
-                    node_get_child_index(node, CHILD_SIDE_RIGHT), FALSE);
-            break;
-        }
-        default: {
-            fail("PANIC! tree_get_node_count: invalid tag - %d\n",
-                node_get_tag(node));
-            break;
-        }
-    }
-}
-
-void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
-    Index index, bool_t root)
+static void _tree_print_subtree(struct Tree tree, char* buffer,
+    bool_t use_spaces, Index index, bool_t root)
 {
     if (root == FALSE && index == 0) {
         strcat(buffer, "t");
         return;
     }
     Node top = tree_get_node(tree, index);
-    switch (node_get_tag(top)) {
-        case NODE_TAG_INDIR: {
+    switch (node_get_type(top)) {
+        case NODE_TYPE_INDIR: {
             _tree_print_subtree(tree, buffer, use_spaces, node_get_indir(top),
                 FALSE);
             break;
         }
-        case NODE_TAG_STEM: {
+        case NODE_TYPE_STEM: {
             strcat(buffer, "t");
-            Index left = node_get_child_index(top, CHILD_SIDE_RIGHT);
+            Index left = node_get_child(top, CHILD_SINGLE);
             if (use_spaces == TRUE) {
                 strcat(buffer, " ");
             }
@@ -309,9 +229,9 @@ void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
             }
             break;
         }
-        case NODE_TAG_FORK: {
+        case NODE_TYPE_FORK: {
             strcat(buffer, "t");
-            Index left = node_get_child_index(top, CHILD_SIDE_LEFT);
+            Index left = node_get_child(top, CHILD_SIDE_LEFT);
             if (use_spaces == TRUE) {
                 strcat(buffer, " ");
             }
@@ -322,7 +242,7 @@ void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
             if (left != 0) {
                 strcat(buffer, ")");
             }
-            Index right = node_get_child_index(top, CHILD_SIDE_RIGHT);
+            Index right = node_get_child(top, CHILD_SIDE_RIGHT);
             if (use_spaces == TRUE) {
                 strcat(buffer, " ");
             }
@@ -335,10 +255,10 @@ void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
             }
             break;
         }
-        case NODE_TAG_APP: {
-            Index left = node_get_child_index(top, CHILD_SIDE_LEFT);
+        case NODE_TYPE_APP: {
+            Index left = node_get_child(top, CHILD_SIDE_LEFT);
             _tree_print_subtree(tree, buffer, use_spaces, left, FALSE);
-            Index right = node_get_child_index(top, CHILD_SIDE_RIGHT);
+            Index right = node_get_child(top, CHILD_SIDE_RIGHT);
             if (use_spaces == TRUE) {
                 strcat(buffer, " ");
             }
@@ -352,49 +272,50 @@ void _tree_print_subtree(struct Tree tree, char* buffer, bool_t use_spaces,
             break;
         }
         default: {
-            fail("PANIC! tree_print: invalid tag - %d\n", node_get_tag(top));
+            fail("PANIC! tree_print: invalid tag - %d\n", node_get_type(top));
             break;
         }
     }
 }
 
-void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root) {
+static void _tree_print_comb_subtree(struct Tree tree, Index index, bool_t root)
+{
     if (root == FALSE && index == 0) {
         printf("L");
         return;
     }
     Node top = tree_get_node(tree, index);
-    switch (node_get_tag(top)) {
-        case NODE_TAG_INDIR: {
+    switch (node_get_type(top)) {
+        case NODE_TYPE_INDIR: {
             _tree_print_comb_subtree(tree, node_get_indir(top), FALSE);
             break;
         }
-        case NODE_TAG_STEM: {
+        case NODE_TYPE_STEM: {
             printf("S");
-            Index left = node_get_child_index(top, CHILD_SIDE_RIGHT);
+            Index left = node_get_child(top, CHILD_SINGLE);
             _tree_print_comb_subtree(tree, left, FALSE);
             break;
         }
-        case NODE_TAG_FORK: {
+        case NODE_TYPE_FORK: {
             printf("F");
-            Index left = node_get_child_index(top, CHILD_SIDE_LEFT);
+            Index left = node_get_child(top, CHILD_SIDE_LEFT);
             _tree_print_comb_subtree(tree, left, FALSE);
 
-            Index right = node_get_child_index(top, CHILD_SIDE_RIGHT);
+            Index right = node_get_child(top, CHILD_SIDE_RIGHT);
             _tree_print_comb_subtree(tree, right, FALSE);
             break;
         }
-        case NODE_TAG_APP: {
+        case NODE_TYPE_APP: {
             printf("A");
-            Index left = node_get_child_index(top, CHILD_SIDE_LEFT);
+            Index left = node_get_child(top, CHILD_SIDE_LEFT);
             _tree_print_comb_subtree(tree, left, FALSE);
 
-            Index right = node_get_child_index(top, CHILD_SIDE_RIGHT);
+            Index right = node_get_child(top, CHILD_SIDE_RIGHT);
             _tree_print_comb_subtree(tree, right, FALSE);
             break;
         }
         default: {
-            fail("PANIC! tree_print: invalid tag - %d\n", node_get_tag(top));
+            fail("PANIC! tree_print: invalid tag - %d\n", node_get_type(top));
             break;
         }
     }

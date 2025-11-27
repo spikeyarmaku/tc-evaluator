@@ -6,7 +6,7 @@ const char node_type_table[] = {'L', 'S', 'F', 'A'};
 
 // ---------------------------------- DECLS ------------------------------------
 
-void _grow_array(struct Array* array);
+static void _grow_array(struct Array* array);
 
 // ------------------------------ PUBLIC METHODS -------------------------------
 
@@ -130,7 +130,7 @@ Index spine_array_peek(struct Array array, bool_t* error) {
     return *result;
 }
 
-Index spine_array_unpop(struct Array* array) {
+void spine_array_unpop(struct Array* array) {
     array_unpop(array, sizeof(Index));
 }
 

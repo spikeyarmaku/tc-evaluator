@@ -5,6 +5,10 @@
 
 #define INDENT_SIZE 4
 
+struct UserData {
+    char magic[4];
+};
+
 void print_indented(int amount, char* str) {
     for (int i = 0; i < amount; i++) {
         printf(" ");
@@ -89,7 +93,10 @@ int main() {
     // writes to the file with a given chunk size (1<<10 = 1024 bytes).
     printf("> Save VM to file\n");
     FILE *fp = fopen("vm.img", "wb");
-    tc_write_vm(vm, write_vm, 1<<10, fp);
+    struct UserData user_data = {"USER"};
+    size_t chunk_size = 1<<10;
+    tc_write_vm(vm, &user_data, sizeof(struct UserData), chunk_size, write_vm,
+        fp);
     fclose(fp);
     // Then we null out the VM handle
     tc_free_vm(vm);
@@ -100,7 +107,21 @@ int main() {
     // read the chunks of the fgiven size (1<<10 = 1024 bytes) from the file.
     printf("> Load VM from file\n");
     fp = fopen("vm.img", "rb");
-    result = tc_read_vm(&vm, read_vm, 1<<10, fp);
+
+    struct VmHeader header;
+    result = tc_read_vm_header(&header, chunk_size, read_vm, fp);
+    if (result != VM_OK) {
+        printf("Error: %d\n", result);
+        exit(EXIT_FAILURE);
+    }
+    result = tc_read_user_data(&header, &user_data, read_vm, fp);
+    if (result != VM_OK) {
+        printf("Error: %d\n", result);
+        exit(EXIT_FAILURE);
+    }
+    // Here user data (e.g. language backend version) can be checked, and vm
+    // data readout can be aborted if necessary
+    result = tc_read_vm_data(&header, &vm, chunk_size, read_vm, fp);
     if (result != VM_OK) {
         printf("Error: %d\n", result);
         exit(EXIT_FAILURE);

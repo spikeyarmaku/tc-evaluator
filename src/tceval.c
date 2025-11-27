@@ -7,6 +7,9 @@ extern const struct VmConfig vm_default_config;
 
 enum VmResult tc_make_vm(Vm_h* vm, struct VmConfig config) {
     *vm = malloc(sizeof(struct Vm));
+    if (*vm == NULL) {
+        return VM_ERR_OOM;
+    }
     **vm = vm_make(config);
     return VM_OK;
 }
@@ -16,17 +19,32 @@ void tc_free_vm(Vm_h vm) {
     free(vm);
 }
 
-enum VmResult tc_read_vm(Vm_h* vm, vm_read_fn fn, size_t chunk_size, void* ctx)
+enum VmResult tc_read_vm_header(struct VmHeader* header_h,
+    size_t chunk_size, vm_read_fn read_fn, void* ctx)
 {
-    *vm = malloc(sizeof(struct Vm));
-    return vm_deserialize(*vm, fn, chunk_size, ctx);
+    return vm_read_header(header_h, chunk_size, read_fn, ctx);
 }
 
-void tc_write_vm(Vm_h vm, vm_write_fn fn, size_t chunk_size, void* ctx) {
-    vm_serialize(fn, *vm, chunk_size, ctx);
+enum VmResult tc_read_user_data(const struct VmHeader* header_h,
+    void* user_data_h, vm_read_fn read_fn, void* ctx)
+{
+    return vm_read_user_data(header_h, user_data_h, read_fn, ctx);
 }
 
-size_t tc_vm_get_size(Vm_h vm) {
+enum VmResult tc_read_vm_data(const struct VmHeader* header_h,
+    Vm_h* vm_h, size_t chunk_size, vm_read_fn read_fn, void* ctx)
+{
+    *vm_h = malloc(sizeof(struct Vm));
+    return vm_read_vm_data(header_h, *vm_h, chunk_size, read_fn, ctx);
+}
+
+void tc_write_vm(Vm_h vm, void* user_data, uint16_t user_data_size,
+    size_t chunk_size, vm_write_fn write_fn, void* ctx)
+{
+    vm_write(*vm, user_data, user_data_size, chunk_size, write_fn, ctx);
+}
+
+size_t tc_get_vm_size(Vm_h vm) {
     return vm_get_size(*vm);
 }
 
@@ -34,9 +52,10 @@ Index tc_add_node(Vm_h vm, enum NodeType type, Index left, Index right) {
     if (type == NODE_TYPE_LEAF) {
         return 0;
     }
-    Index index = tree_add_node(&vm->tree, (enum NodeTag)type);
-    tree_change_child(&vm->tree, index, CHILD_SIDE_LEFT, left);
-    tree_change_child(&vm->tree, index, CHILD_SIDE_RIGHT, right);
+    Node node = node_make(type, 0, left, right);
+    Index index = tree_add_node(&vm->tree, node);
+    tree_incr_refcount(&vm->tree, left);
+    tree_incr_refcount(&vm->tree, right);
     return index;
 }
 
@@ -54,7 +73,8 @@ Node_h tc_get_top(Vm_h vm) {
 }
 
 void tc_set_top(Vm_h vm, Index index) {
-    tree_change_child(&vm->tree, 0, CHILD_SIDE_LEFT, index);
+    tree_set_node(vm->tree, 0, node_make(NODE_TYPE_INDIR, 1, 0, index));
+    tree_incr_refcount(&vm->tree, index);
 }
 
 Node_h tc_get_node(Vm_h vm, Index index) {
@@ -68,11 +88,11 @@ enum NodeType tc_get_node_type(Node_h node) {
     if (node == NULL) {
         return NODE_TYPE_LEAF;
     }
-    return (enum NodeType)node_get_tag(*node);
+    return node_get_type(*node);
 }
 
 Index tc_get_node_child(Node_h node, enum ChildSide side) {
-    return node_get_child_index(*node, side);
+    return node_get_child(*node, side);
 }
 
 // void tc_compact_vm(Vm_h vm) {

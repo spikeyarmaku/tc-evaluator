@@ -43,6 +43,6 @@ struct Array    spine_array_make    (size_t capacity);
 void            spine_array_push    (struct Array* array, Index node_index);
 Index           spine_array_pop     (struct Array* array, bool_t* error);
 Index           spine_array_peek    (struct Array array, bool_t* error);
-Index           spine_array_unpop   (struct Array* array);
+void            spine_array_unpop   (struct Array* array);
 
 #endif

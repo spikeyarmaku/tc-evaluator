@@ -40,9 +40,10 @@ size_t parse_expr(struct Tree* tree, const char **p) {
         parse_whitespace(p);
         if (**p == 't' || **p == '(') {
             size_t right = parse_atom(tree, p);
-            Index new_left = tree_add_node(tree, NODE_TAG_APP);
-            tree_change_child(tree, new_left, CHILD_SIDE_LEFT, left);
-            tree_change_child(tree, new_left, CHILD_SIDE_RIGHT, right);
+            Node node = node_make(NODE_TYPE_APP, 1, left, right);
+            Index new_left = tree_add_node(tree, node);
+            tree_incr_refcount(tree, left);
+            tree_incr_refcount(tree, right);
             left = new_left;
         } else {
             *p = save;
@@ -56,7 +57,7 @@ struct Vm vm_parse(const char* str) {
     struct Vm vm = vm_make(vm_default_config);
     size_t last_index = parse_expr(&vm.tree, &str);
     printf("Last index: %lu\n", last_index);
-    tree_change_child(&vm.tree, 0, CHILD_SIDE_LEFT, last_index);
+    tree_set_node(vm.tree, 0, node_make(NODE_TYPE_INDIR, 1, 0, last_index));
     return vm;
 }
 

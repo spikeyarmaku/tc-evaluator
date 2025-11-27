@@ -10,23 +10,14 @@
 #include "../include/tceval.h"
 
 // The tree is stored as a series of Nodes. A node is a 128-bit integer value:
-// 2 bits for tag (Indirection, Stem, Fork or Application), 30 bits for refcount
-// and 48-48 bits for child indices. Leaf nodes are not stored, as they don't
-// have any children, and they contain no useful information - all leaf nodes
-// are the same. They are represented by the 0 index. Indirection nodes are
-// useful when the parent node's child index has to be changed (e.g. with rules
-// 1 and 3a).
-
-// Further node type ideas (these, together with Indirection, can be special
-// node types, and the Indirection tag could be renamed to Special):
-// - Number
-//      They contain a 32-bit natural number, that can be incrementally
-//      unpacked into a tree
-// - Compressed
-//      They are trees that are represented as bits, where every two bits is a
-//      node (0 - leaf, 1 - stem, 2 - fork, 3- app). They can also be
-//      incrementally unpacked into a tree, but it could be quite slow.
-//      Recommended for low-memory environments
+// 2 bits for tag (Custom, Stem, Fork or Application), and if it isn't a custom
+// node, 30 bits for refcount and 48-48 bits for child indices. Leaf nodes are
+// not stored, as they don't have any children, and they contain no useful
+// information - all leaf nodes are the same. They are represented by the 0
+// index.
+// Indirection nodes are useful when the parent node's child index has to be
+// changed (e.g. with rules 1 and 3a) - they are essentially Stem nodes with a
+// non-zero left child.
 
 // See node.c for details and examples
 
@@ -35,38 +26,31 @@ typedef struct NodeData {
     uint64_t right;
 } Node;
 
-enum NodeTag {
-    NODE_TAG_INDIR  = 0,
-    NODE_TAG_STEM   = 1,
-    NODE_TAG_FORK   = 2,
-    NODE_TAG_APP    = 3
-};
-
 // Create
-Node            node_make               (enum NodeTag tag, size_t refcount,
+Node            node_make           (enum NodeType type, size_t refcount,
     Index left, Index right);
-Node            node_make_empty         ();
+Node            node_make_empty     ();
 
 // Compare
-bool_t          node_is_equal           (Node node0, Node node1);
-bool_t          node_is_empty           (Node node);
+bool_t          node_is_equal       (Node node0, Node node1);
+bool_t          node_is_empty       (Node node);
 
 // Get
-Index           node_get_indir          (Node node);
-enum NodeTag    node_get_tag            (Node node);
-uint32_t        node_get_refcount       (Node node);
-Index           node_get_child_index    (Node node, enum ChildSide side);
+Index           node_get_indir      (Node node);
+enum NodeType   node_get_type       (Node node);
+uint32_t        node_get_refcount   (Node node);
+Index           node_get_child      (Node node, enum ChildSide side);
 
 // Set
-void            node_set_indir          (Node* node, Index index);
-void            node_set_tag            (Node* node, enum NodeTag tag);
-void            node_set_refcount       (Node* node, uint32_t refcount);
-void            node_set_child_index    (Node* node, Index index,
-    enum ChildSide side);
+Node            node_set_indir      (Node node, Index index);
+Node            node_set_type       (Node node, enum NodeType type);
+Node            node_set_refcount   (Node node, uint32_t refcount);
+Node            node_set_child      (Node node, enum ChildSide side,
+    Index index);
 
-void            node_incr_refcount      (Node* node);
-void            node_decr_refcount      (Node* node);
+Node            node_incr_refcount  (Node node);
+Node            node_decr_refcount  (Node node);
 
-int             node_print              (char* buffer, Node node);
+int             node_print          (char* buffer, Node node);
 
 #endif

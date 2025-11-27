@@ -29,19 +29,22 @@
 
 // ------------------------------ PUBLIC METHODS ------------------------------
 
-Node node_make(enum NodeTag tag, size_t refcount, Index left, Index right) {
+Node node_make(enum NodeType type, size_t refcount, Index left, Index right) {
     Node result;
-    result.left =
-        tag + (get_masked(refcount, ((size_t)1 << 14) - 1) << 2) + (left << 16);
+    if (type == NODE_TYPE_INDIR) {
+        type = NODE_TYPE_STEM;
+        if (left == 0) {
+            left = 1;
+        }
+    }
+    result.left = type + (get_masked(refcount, ((size_t)1 << 14) - 1) << 2) +
+        (left << 16);
     result.right = (refcount >> 14) + (right << 16);
     return result;
 }
 
 Node node_make_empty() {
-    Node result;
-    result.left = 0;
-    result.right = 0;
-    return result;
+    return node_make(NODE_TYPE_APP, 0, 0, 0);
 }
 
 bool_t node_is_equal(Node node0, Node node1) {
@@ -50,12 +53,13 @@ bool_t node_is_equal(Node node0, Node node1) {
 }
 
 Index node_get_indir(Node node) {
-    return node_get_child_index(node, CHILD_SIDE_LEFT);
+    return node_get_child(node, CHILD_SINGLE);
 }
 
-void node_set_indir(Node* node, Index index) {
-    node_set_tag(node, NODE_TAG_INDIR);
-    node_set_child_index(node, index, CHILD_SIDE_LEFT);
+// Set type to NODE_TYPE_INDIR and set child index to the referenced index
+Node node_set_indir(Node node, Index index) {
+    return node_set_child(
+        node_set_type(node, NODE_TYPE_INDIR), CHILD_SINGLE, index);
 }
 
 bool_t node_is_empty(Node node) {
@@ -67,37 +71,49 @@ uint32_t node_get_refcount(Node node) {
         (get_masked(node.right, ((size_t)1 << 16) - 1) << 16);
 }
 
-void node_set_refcount(Node* node, uint32_t refcount) {
-    node->left =
-        set_masked(node->left, refcount << 2, (((size_t)1 << 14) - 1) << 2);
-    node->right =
-        set_masked(node->right, refcount >> 14, ((size_t)1 << 16) - 1);
+Node node_set_refcount(Node node, uint32_t refcount) {
+    node.left =
+        set_masked(node.left, refcount << 2, (((size_t)1 << 14) - 1) << 2);
+    node.right =
+        set_masked(node.right, refcount >> 14, ((size_t)1 << 16) - 1);
+    return node;
 }
 
-void node_incr_refcount(Node* node) {
-    uint_least64_t refcount = node_get_refcount(*node);
+Node node_incr_refcount(Node node) {
+    uint_least64_t refcount = node_get_refcount(node);
     if (refcount == REFCOUNT_LIMIT) {
         fail("PANIC! node_incr_refcount: Refcount overflow\n");
     }
-    node_set_refcount(node, refcount + 1);
+    return node_set_refcount(node, refcount + 1);
 }
 
-void node_decr_refcount(Node* node) {
-    uint_least64_t refcount = node_get_refcount(*node);
+Node node_decr_refcount(Node node) {
+    uint_least64_t refcount = node_get_refcount(node);
     if (refcount != 0) {
-        node_set_refcount(node, refcount - 1);
+        return node_set_refcount(node, refcount - 1);
     }
+    fail("PANIC! node_decr_refcount: Refcount underflow\n");
+    return node;
 }
 
-enum NodeTag node_get_tag(Node node) {
-    return get_masked(node.left, TAG_MASK);
+enum NodeType node_get_type(Node node) {
+    enum NodeType type = get_masked(node.left, TAG_MASK);
+    if (type == NODE_TYPE_STEM && node_get_child(node, CHILD_SIDE_LEFT) != 0) {
+        return NODE_TYPE_INDIR;
+    }
+    return type;
 }
 
-void node_set_tag(Node* node, enum NodeTag tag) {
-    node->left = set_masked(node->left, tag, TAG_MASK);
+Node node_set_type(Node node, enum NodeType type) {
+    if (type == NODE_TYPE_INDIR) {
+        node = node_set_child(node, CHILD_SIDE_LEFT, 1);
+        type = NODE_TYPE_STEM;
+    }
+    node.left = set_masked(node.left, type, TAG_MASK);
+    return node;
 }
 
-Index node_get_child_index(Node node, enum ChildSide side) {
+Index node_get_child(Node node, enum ChildSide side) {
     if (side == CHILD_SIDE_LEFT) {
         return node.left >> 16;
     } else {
@@ -105,23 +121,24 @@ Index node_get_child_index(Node node, enum ChildSide side) {
     }
 }
 
-void node_set_child_index(Node* node, Index index, enum ChildSide side) {
+Node node_set_child(Node node, enum ChildSide side, Index index) {
     if (side == CHILD_SIDE_LEFT) {
-        node->left =
-            set_masked(node->left, index << 16, (((size_t)1 << 48) - 1) << 16);
+        node.left =
+            set_masked(node.left, index << 16, (((size_t)1 << 48) - 1) << 16);
     } else {
-        node->right =
-            set_masked(node->right, index << 16, (((size_t)1 << 48) - 1) << 16);
+        node.right =
+            set_masked(node.right, index << 16, (((size_t)1 << 48) - 1) << 16);
     }
+    return node;
 }
 
 int node_print(char* buffer, Node node) {
     int char_count = 0;
-    char* tags[] = {"I", "S", "F", "A"};
-    enum NodeTag tag = node_get_tag(node);
-    char_count = sprintf(buffer, "%s[%u].%lu.%lu", tags[tag],
-        node_get_refcount(node), node_get_child_index(node,
-            CHILD_SIDE_LEFT), node_get_child_index(node, CHILD_SIDE_RIGHT));
+    char* types[] = {"C", "S", "F", "A", "I"};
+    enum NodeType type = node_get_type(node);
+    char_count = sprintf(buffer, "%s[%u].%lu.%lu", types[type],
+        node_get_refcount(node), node_get_child(node,
+            CHILD_SIDE_LEFT), node_get_child(node, CHILD_SIDE_RIGHT));
     buffer[char_count] = 0;
     return char_count;
 }
