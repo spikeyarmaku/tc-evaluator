@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(TreeCalculusEvaluator VERSION 0.1.0 LANGUAGES C DESCRIPTION "Tree Calculus evaluator library")
 
+if(CMAKE_BUILD_TYPE STREQUAL Release)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT error)
+    if (IPO_SUPPORTED)
+        message(STATUS "IPO / LTO enabled")
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    else()
+        message(STATUS "IPO / LTO not supported: <${error}>")
+    endif()
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
   set(CMAKE_C_STANDARD_INCLUDE_DIRECTORIES
