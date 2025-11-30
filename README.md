@@ -10,6 +10,23 @@ It is not meant to be used directly, but as a language backend, like the STG-mac
 
 ## How to Build
 
+### Windows
+(Only tested on Windows 11)
+
+#### MSYS2 / MinGW
+You will need a C compiler like `clang` (probably `gcc` would also work, but I haven't tested it) `cmake`, and `ninja`. Install them with
+```
+pacman -Syu
+pacman -S mingw-w64-x86_64-clang mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+```
+
+After it is done, continue with the [Linux](#linux) instructions.
+
+#### Visual Studio / MSVC
+No.
+
+### Linux
+
 Use cmake to build the lib:
 ```
 cmake -B build
