@@ -104,7 +104,7 @@ int main() {
 
     // Next, we read the VM from the file we have just written to. Similarly to
     // the previous case, the library asks for a callback, but this time, we
-    // read the chunks of the fgiven size (1<<10 = 1024 bytes) from the file.
+    // read the chunks of the given size (1<<10 = 1024 bytes) from the file.
     printf("> Load VM from file\n");
     fp = fopen("vm.img", "rb");
 

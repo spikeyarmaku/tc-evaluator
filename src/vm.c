@@ -1,8 +1,3 @@
-// TODO If there are no shared nodes in a rule, repurposing App nodes should be
-// fine
-// TODO Add support for user-defined evaluation rules for custom nodes
-// TODO Add ability to compact node array (e.g. before serializing)
-
 #include "vm.h"
 #include "array.h"
 #include "global.h"

@@ -6,7 +6,7 @@ A tree calculus evaluator library written in C.
 
 Tree Calculus (TC) is a mathematical model of computation (see [Acknowledgements](#acknowledgements)), similar to Lambda Calculus, but with introspection capabilities. TC-evaluator is a virtual machine that reduces trees according to TC's reduction rules. It has no IO or side effects.
 
-It is not meant to be used directly, but as a language backend, like the STG-machine for GHC, or the BEAM VM for Erlang.
+It is not meant to be used directly, but as a language backend, like the STG-machine for GHC, or BEAM for Erlang.
 
 ## How to Build
 
@@ -19,7 +19,7 @@ cmake --build build
 If you also want to build the example:
 ```
 cmake -B build
-cmake --build build --target tceval_example
+cmake --build build --target=example
 ```
 
 The default build mode is Release (which can also be set with `cmake -B build -DCMAKE_BUILD_TYPE=Release`). You can build with profiling info with `cmake -B build -DCMAKE_BUILD_TYPE=Profiling`.
