@@ -64,22 +64,6 @@ void tree_set_node(struct Tree tree, Index index, Node node) {
     node_array_set(tree.nodes, index, node);
 }
 
-// Since this is used by the API, skip over indirection nodes
-Node* tree_get_node_ref(struct Tree tree, Index index) {
-    Node* node = node_array_get_ref(tree.nodes, index);
-    if (node == NULL) {
-        return NULL;
-    }
-    while (node_get_type(*node) == NODE_TYPE_INDIR) {
-        Index referenced_node_index = node_get_indir(*node);
-        if (referenced_node_index == 0) {
-            return NULL;
-        }
-        node = node_array_get_ref(tree.nodes, referenced_node_index);
-    }
-    return node;
-}
-
 size_t tree_get_node_count(struct Tree tree) {
     return node_array_count(tree.nodes);
 }

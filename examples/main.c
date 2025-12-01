@@ -16,8 +16,8 @@ void print_indented(int amount, char* str) {
     printf("%s", str);
 }
 
-void print_tree(Vm_h vm, Node_h node, int indent_level) {
-    switch (tc_get_node_type(node)) {
+void print_tree(Vm_h vm, Index index, int indent_level) {
+    switch (tc_get_node_type(vm, index)) {
         case NODE_TYPE_LEAF: {
             printf("Leaf\n");
             break;
@@ -25,23 +25,23 @@ void print_tree(Vm_h vm, Node_h node, int indent_level) {
         case NODE_TYPE_STEM: {
             printf("Stem\n");
             print_indented((indent_level + 1) * INDENT_SIZE, "└ ");
-            print_tree(vm, tc_get_node(vm, tc_get_node_child(node,
-                CHILD_SIDE_LEFT)), indent_level + 1);
+            print_tree(vm, tc_get_node_child(vm, index, CHILD_SIDE_LEFT),
+                indent_level + 1);
             break;
         }
         case NODE_TYPE_FORK:
         case NODE_TYPE_APP: {
-            if (tc_get_node_type(node) == NODE_TYPE_FORK) {
+            if (tc_get_node_type(vm, index) == NODE_TYPE_FORK) {
                 printf("Fork\n");
             } else {
                 printf("App\n");
             }
             print_indented((indent_level + 1) * INDENT_SIZE, "├ ");
-            print_tree(vm, tc_get_node(vm, tc_get_node_child(node,
-                CHILD_SIDE_LEFT)), indent_level + 1);
+            print_tree(vm, tc_get_node_child(vm, index, CHILD_SIDE_LEFT),
+                indent_level + 1);
             print_indented((indent_level + 1) * INDENT_SIZE, "└ ");
-            print_tree(vm, tc_get_node(vm, tc_get_node_child(node,
-                CHILD_SIDE_RIGHT)), indent_level + 1);
+            print_tree(vm, tc_get_node_child(vm, index, CHILD_SIDE_RIGHT),
+                indent_level + 1);
             break;
         }
         default: {
@@ -77,7 +77,7 @@ int main() {
     // invoke reduction rule 2
     printf("> Add nodes\n");
     Index index;
-    index = tc_add_leaf(vm);
+    index = tc_leaf();
     index = tc_add_stem(vm, index);
     index = tc_add_fork(vm, index, 0);
     // A node can be referenced more than once:
@@ -134,7 +134,7 @@ int main() {
     // Lastly, print the resulting tree
     printf("> Query the result\n");
     // We will start from the top, so we need to query it
-    Node_h top = tc_get_top(vm);
+    Index top = tc_get_top(vm);
     print_tree(vm, top, 0);
     tc_debug_print_tree(vm);
 }

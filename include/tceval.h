@@ -15,7 +15,6 @@ struct VmConfig {
 };
 
 typedef struct Vm* Vm_h;
-typedef struct NodeData* Node_h;
 typedef size_t Index;
 
 enum NodeType {
@@ -78,7 +77,7 @@ size_t          tc_get_vm_size  (Vm_h vm);
 Index           tc_add_app      (Vm_h vm, Index left, Index right);
 Index           tc_add_fork     (Vm_h vm, Index left, Index right);
 Index           tc_add_stem     (Vm_h vm, Index child);
-Index           tc_add_leaf     (Vm_h vm);
+Index           tc_leaf         ();
 // Index           tc_add_custom   (Vm_h vm, size_t left, size_t right);
 
 // Reduction methods
@@ -86,12 +85,13 @@ enum VmState    tc_step         (Vm_h vm); // Evaluate one step
 void            tc_run          (Vm_h vm); // Run evaluation to the end
 
 // Query methods
-Node_h          tc_get_top      (Vm_h vm); // Get the top node of the tree
+Index           tc_get_top      (Vm_h vm);
 void            tc_set_top      (Vm_h vm, Index index);
-Node_h          tc_get_node     (Vm_h vm, Index index); // Get node by index
-enum NodeType   tc_get_node_type    (Node_h node); // Get a node's type tag
+enum NodeType   tc_get_node_type    (Vm_h vm, Index index);
 // Get the index of a node's child
-Index           tc_get_node_child   (Node_h node, enum ChildSide side);
+Index           tc_get_node_child   (Vm_h vm, Index index, enum ChildSide side);
+void            tc_set_node_child   (Vm_h vm, Index index, enum ChildSide side,
+    Index child);
 
 // Misc
 // void            tc_compact_vm   (Vm_h vm);

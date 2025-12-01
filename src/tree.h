@@ -20,7 +20,6 @@ void        tree_free               (struct Tree* tree);
 Index       tree_add_node           (struct Tree* tree, Node node);
 Node        tree_get_node           (struct Tree tree, Index index);
 void        tree_set_node           (struct Tree tree, Index index, Node node);
-Node*       tree_get_node_ref       (struct Tree tree, Index index);
 void        tree_incr_refcount      (struct Tree* tree, Index index);
 void        tree_decr_refcount      (struct Tree* tree, Index index);
 void        tree_delete_node        (struct Tree* tree, Index index);
