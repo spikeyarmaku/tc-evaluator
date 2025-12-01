@@ -91,7 +91,7 @@ enum NodeType   tc_get_node_type    (Vm_h vm, Index index);
 // Get the index of a node's child
 Index           tc_get_node_child   (Vm_h vm, Index index, enum ChildSide side);
 void            tc_set_node_child   (Vm_h vm, Index index, enum ChildSide side,
-    Index child);
+    Index new_child_index);
 
 // Misc
 // void            tc_compact_vm   (Vm_h vm);

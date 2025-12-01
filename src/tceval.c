@@ -105,6 +105,16 @@ Index tc_get_node_child(Vm_h vm, Index index, enum ChildSide side) {
     return node_get_child(tree_get_node(vm->tree, index), side);
 }
 
+void tc_set_node_child(Vm_h vm, Index index, enum ChildSide side,
+    Index new_child_index)
+{
+    Node node = tree_get_node(vm->tree, index);
+    Index old_child_index = node_get_child(node, side);
+    tree_set_node(vm->tree, index, node_set_child(node, side, new_child_index));
+    tree_decr_refcount(&vm->tree, old_child_index);
+    tree_incr_refcount(&vm->tree, new_child_index);
+}
+
 // void tc_compact_vm(Vm_h vm) {
 //     vm_compact(vm);
 // }

@@ -79,7 +79,9 @@ int main() {
     Index index;
     index = tc_leaf();
     index = tc_add_stem(vm, index);
-    index = tc_add_fork(vm, index, 0);
+    Index stem_index = index;
+    index = tc_add_fork(vm, 0, 0);
+    tc_set_node_child(vm, index, CHILD_SIDE_LEFT, stem_index);
     // A node can be referenced more than once:
     index = tc_add_app(vm, index, index);
     // After nodes are added, we must tell which one is the root of the tree
