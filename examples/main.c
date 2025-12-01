@@ -77,11 +77,11 @@ int main() {
     // invoke reduction rule 2
     printf("> Add nodes\n");
     Index index;
-    index = tc_add_node(vm, NODE_TYPE_LEAF, 0, 0);
-    index = tc_add_node(vm, NODE_TYPE_STEM, index, 0);
-    index = tc_add_node(vm, NODE_TYPE_FORK, index, 0);
+    index = tc_add_leaf(vm);
+    index = tc_add_stem(vm, index);
+    index = tc_add_fork(vm, index, 0);
     // A node can be referenced more than once:
-    index = tc_add_node(vm, NODE_TYPE_APP, index, index);
+    index = tc_add_app(vm, index, index);
     // After nodes are added, we must tell which one is the root of the tree
     tc_set_top(vm, index);
     // Print the tree to check if everything is correct

@@ -5,6 +5,8 @@
 
 extern const struct VmConfig vm_default_config;
 
+static Index _tc_add_node(Vm_h vm, enum NodeType type, Index left, Index right);
+
 enum VmResult tc_make_vm(Vm_h* vm, struct VmConfig config) {
     *vm = malloc(sizeof(struct Vm));
     if (*vm == NULL) {
@@ -48,7 +50,7 @@ size_t tc_get_vm_size(Vm_h vm) {
     return vm_get_size(*vm);
 }
 
-Index tc_add_node(Vm_h vm, enum NodeType type, Index left, Index right) {
+static Index _tc_add_node(Vm_h vm, enum NodeType type, Index left, Index right) {
     if (type == NODE_TYPE_LEAF) {
         return 0;
     }
@@ -57,6 +59,22 @@ Index tc_add_node(Vm_h vm, enum NodeType type, Index left, Index right) {
     tree_incr_refcount(&vm->tree, left);
     tree_incr_refcount(&vm->tree, right);
     return index;
+}
+
+Index tc_add_app(Vm_h vm, Index left, Index right) {
+    return _tc_add_node(vm, NODE_TYPE_APP, left, right);
+}
+
+Index tc_add_fork(Vm_h vm, Index left, Index right) {
+    return _tc_add_node(vm, NODE_TYPE_FORK, left, right);
+}
+
+Index tc_add_stem(Vm_h vm, Index child) {
+    return _tc_add_node(vm, NODE_TYPE_STEM, 0, child);
+}
+
+Index tc_add_leaf(Vm_h vm) {
+    return 0;
 }
 
 enum VmState tc_step(Vm_h vm) {

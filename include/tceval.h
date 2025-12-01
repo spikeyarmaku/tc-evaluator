@@ -75,8 +75,11 @@ void            tc_write_vm     (Vm_h vm, void* user_data,
 size_t          tc_get_vm_size  (Vm_h vm);
 
 // Add a node manually
-Index           tc_add_node     (Vm_h vm, enum NodeType type, Index left,
-    Index right);
+Index           tc_add_app      (Vm_h vm, Index left, Index right);
+Index           tc_add_fork     (Vm_h vm, Index left, Index right);
+Index           tc_add_stem     (Vm_h vm, Index child);
+Index           tc_add_leaf     (Vm_h vm);
+// Index           tc_add_custom   (Vm_h vm, size_t left, size_t right);
 
 // Reduction methods
 enum VmState    tc_step         (Vm_h vm); // Evaluate one step
