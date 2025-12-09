@@ -103,6 +103,7 @@ Index tc_get_top(Vm_h vm) {
 }
 
 void tc_set_top(Vm_h vm, Index index) {
+    tree_decr_refcount(&vm->tree, node_get_indir(tree_get_node(vm->tree, 0)));
     tree_set_node(vm->tree, 0, node_make(NODE_TYPE_INDIR, 1, 0, index));
     tree_incr_refcount(&vm->tree, index);
 }
