@@ -86,12 +86,8 @@ void tc_run(Vm_h vm) {
 }
 
 int tc_can_run(Vm_h vm) {
-    Node current = tree_get_node(vm->tree, 0);
-    while (node_get_type(current) == NODE_TYPE_INDIR) {
-        current = tree_get_node(vm->tree, node_get_indir(current));
-    }
     // TODO handle custom nodes
-    if (node_get_type(current) == NODE_TYPE_APP) {
+    if (tc_get_node_type(vm, tc_get_top(vm)) == NODE_TYPE_APP) {
         return 1;
     } else {
         return 0;
@@ -99,7 +95,13 @@ int tc_can_run(Vm_h vm) {
 }
 
 Index tc_get_top(Vm_h vm) {
-    return node_get_indir(tree_get_node(vm->tree, 0));
+    Node current = tree_get_node(vm->tree, 0);
+    Index current_index = 0;
+    while (node_get_type(current) == NODE_TYPE_INDIR) {
+        current_index = node_get_indir(current);
+        current = tree_get_node(vm->tree, current_index);
+    }
+    return current_index;
 }
 
 void tc_set_top(Vm_h vm, Index index) {
