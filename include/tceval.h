@@ -85,6 +85,7 @@ enum VmState    tc_step         (Vm_h vm); // Evaluate one step
 void            tc_run          (Vm_h vm); // Run evaluation to the end
 
 // Query methods
+int             tc_can_run      (Vm_h vm);
 Index           tc_get_top      (Vm_h vm);
 void            tc_set_top      (Vm_h vm, Index index);
 enum NodeType   tc_get_node_type    (Vm_h vm, Index index);

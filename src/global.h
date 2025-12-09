@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef uint8_t bool_t;
+typedef int bool_t;
 typedef size_t Index;
 
 #define TRUE 1

@@ -85,6 +85,19 @@ void tc_run(Vm_h vm) {
     vm_run(vm);
 }
 
+int tc_can_run(Vm_h vm) {
+    Node current = tree_get_node(vm->tree, 0);
+    while (node_get_type(current) == NODE_TYPE_INDIR) {
+        current = tree_get_node(vm->tree, node_get_indir(current));
+    }
+    // TODO handle custom nodes
+    if (node_get_type(current) == NODE_TYPE_APP) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 Index tc_get_top(Vm_h vm) {
     return node_get_indir(tree_get_node(vm->tree, 0));
 }
