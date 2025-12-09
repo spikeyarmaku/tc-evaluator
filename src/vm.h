@@ -22,6 +22,7 @@ enum VmState    vm_step         (struct Vm* vm);
 void            vm_run          (struct Vm* vm);
 // void            vm_compact      (struct Vm* vm);
 size_t          vm_get_size     (struct Vm vm);
+void            vm_spine_print  (struct Array spine);
 
 // Serialize / deserialize
 void            vm_write            (struct Vm vm, void* user_data,

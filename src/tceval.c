@@ -135,4 +135,5 @@ void tc_set_node_child(Vm_h vm, Index index, enum ChildSide side,
 
 void tc_debug_print_tree(Vm_h vm) {
     tree_debug_print(vm->tree);
+    vm_spine_print(vm->spine);
 }

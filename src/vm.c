@@ -33,7 +33,7 @@ static void     _apply_rule_3c      (struct Tree* tree_h, Index top_index,
     Node top_node, Index left_child_index, Node left_child,
     Index right_child_index, Node right_child);
 
-static void     _spine_print        (struct Array spine);
+static void     _vm_spine_rewind     (struct Vm* vm);
 
 // -----------------------------------------------------------------------------
 
@@ -70,6 +70,7 @@ enum VmState vm_step(struct Vm* vm) {
             if (top_index == 0) {
                 Index indir_index = node_get_indir(top_node);
                 if (indir_index == 0) {
+                    _vm_spine_rewind(vm);
                     return VM_STATE_DONE;
                 }
                 Node indir_node = tree_get_node(vm->tree, indir_index);
@@ -88,6 +89,7 @@ enum VmState vm_step(struct Vm* vm) {
             }
             return VM_STATE_RUNNING;
         } else {
+            _vm_spine_rewind(vm);
             return VM_STATE_DONE;
         }
     }
@@ -489,7 +491,7 @@ static void _apply_rule_3c(struct Tree* tree_h, Index top_index, Node top_node,
     tree_incr_refcount(tree_h, node_v_index);
 }
 
-static void _spine_print(struct Array spine) {
+void vm_spine_print(struct Array spine) {
     printf("Spine: ");
     size_t count = spine.size / sizeof(Index);
     for (size_t i = 0; i < count; i++) {
@@ -497,4 +499,13 @@ static void _spine_print(struct Array spine) {
         printf("%lu ", index);
     }
     printf("\n");
+}
+
+// --- PRIVATE METHODS ---
+static void _vm_spine_rewind(struct Vm* vm) {
+    bool_t error = FALSE;
+    while (error == FALSE) {
+        spine_array_pop(&vm->spine, &error);
+    }
+    spine_array_push(&vm->spine, 0);
 }
