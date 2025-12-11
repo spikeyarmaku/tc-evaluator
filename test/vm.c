@@ -68,7 +68,7 @@ void check_eval(const char* src, const char* expected) {
     struct Vm vm = vm_parse(src);
     vm_run(&vm);
     char buffer[65536];
-    tree_print(vm.tree, buffer, TRUE);
+    tree_print(vm.tree, buffer, FALSE);
     bool_t result = (strcmp(buffer, expected) == 0) ? TRUE : FALSE;
     if (result == FALSE) {
         printf("Result: %s, expected: %s\n", buffer, expected);

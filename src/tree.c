@@ -70,11 +70,6 @@ size_t tree_get_node_count(struct Tree tree) {
 
 void tree_print(struct Tree tree, char* buffer, bool_t use_spaces) {
     if (node_array_count(tree.nodes) - tree.free_space_count > 0) {
-#ifdef USE_SPACES
-        bool_t use_spaces = TRUE;
-#else
-        bool_t use_spaces = FALSE;
-#endif
         buffer[0] = 0;
         _tree_print_subtree(tree, buffer, use_spaces, 0, TRUE);
     } else {
