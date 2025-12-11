@@ -193,7 +193,7 @@ void vm_run(struct Vm* vm) {
         counter++;
     }
 
-    printf("%lu steps\n", counter);
+    debug("%lu steps\n", counter);
 }
 
 // void vm_compact(struct Vm* vm) {
