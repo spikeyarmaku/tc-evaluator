@@ -48,6 +48,8 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 elseif(CMAKE_BUILD_TYPE STREQUAL Release)
     message(STATUS "Building Release version")
     target_compile_options(tceval PRIVATE -O3)
+else()
+    message(STATUS "Invalid build type ${CMAKE_BUILD_TYPE}")
 endif()
 
 # --- TESTS ---
