@@ -1,10 +1,10 @@
-# TC-evaluator
+# Shrubble
 
 A tree calculus evaluator library written in C.
 
 ## Description
 
-Tree Calculus (TC) is a mathematical model of computation (see [Acknowledgements](#acknowledgements)), similar to Lambda Calculus, but with introspection capabilities. TC-evaluator is a virtual machine that reduces trees according to TC's reduction rules. It has no IO or side effects.
+Tree Calculus (TC) is a mathematical model of computation (see [Acknowledgements](#acknowledgements)), similar to Lambda Calculus, but with introspection capabilities. Shrubble is a virtual machine that reduces trees according to TC's reduction rules. It has no IO or side effects.
 
 It is not meant to be used directly, but as a language backend, like the STG-machine for GHC, or BEAM for Erlang.
 

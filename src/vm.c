@@ -9,7 +9,7 @@
 #include <string.h>
 #include <assert.h>
 
-static const char* magic_default = "TCVM";
+static const char* magic_default = "SHRB";
 static const uint8_t version_major = 1;
 static const uint8_t version_minor = 0;
 const struct VmConfig vm_default_config = {1<<10, 1<<10};

@@ -1,5 +1,5 @@
-#ifndef TCEVAL_H
-#define TCEVAL_H
+#ifndef SHRUBBLE_H
+#define SHRUBBLE_H
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -56,46 +56,46 @@ extern const struct VmConfig vm_default_config;
 // --- Methods ---
 
 // Create VM
-enum VmResult   tc_make_vm          (Vm_h* vm, struct VmConfig config);
-enum VmResult   tc_read_vm_header   (struct VmHeader* header_h,
+enum VmResult   sh_make_vm          (Vm_h* vm, struct VmConfig config);
+enum VmResult   sh_read_vm_header   (struct VmHeader* header_h,
     size_t chunk_size, vm_read_fn read_fn, void* ctx);
-enum VmResult   tc_read_user_data   (const struct VmHeader* header_h,
+enum VmResult   sh_read_user_data   (const struct VmHeader* header_h,
     void* user_data_h, vm_read_fn read_fn, void* ctx);
-enum VmResult   tc_read_vm_data     (const struct VmHeader* header_h,
+enum VmResult   sh_read_vm_data     (const struct VmHeader* header_h,
     Vm_h* vm_h, size_t chunk_size, vm_read_fn read_fn, void* ctx);
 
 // Delete VM
-void            tc_free_vm      (Vm_h vm);
+void            sh_free_vm      (Vm_h vm);
 
 // Serialize VM
-void            tc_write_vm     (Vm_h vm, void* user_data,
+void            sh_write_vm     (Vm_h vm, void* user_data,
     uint16_t user_data_size, size_t chunk_size, vm_write_fn write_fn,
     void* ctx);
-size_t          tc_get_vm_size  (Vm_h vm);
+size_t          sh_get_vm_size  (Vm_h vm);
 
 // Add a node manually
-Index           tc_add_app      (Vm_h vm, Index left, Index right);
-Index           tc_add_fork     (Vm_h vm, Index left, Index right);
-Index           tc_add_stem     (Vm_h vm, Index child);
-Index           tc_leaf         ();
-// Index           tc_add_custom   (Vm_h vm, size_t left, size_t right);
+Index           sh_add_app      (Vm_h vm, Index left, Index right);
+Index           sh_add_fork     (Vm_h vm, Index left, Index right);
+Index           sh_add_stem     (Vm_h vm, Index child);
+Index           sh_leaf         ();
+// Index           sh_add_custom   (Vm_h vm, size_t left, size_t right);
 
 // Reduction methods
-enum VmState    tc_step         (Vm_h vm); // Evaluate one step
-void            tc_run          (Vm_h vm); // Run evaluation to the end
+enum VmState    sh_step         (Vm_h vm); // Evaluate one step
+void            sh_run          (Vm_h vm); // Run evaluation to the end
 
 // Query methods
-int             tc_can_run      (Vm_h vm);
-Index           tc_get_top      (Vm_h vm);
-void            tc_set_top      (Vm_h vm, Index index);
-enum NodeType   tc_get_node_type    (Vm_h vm, Index index);
+int             sh_can_run      (Vm_h vm);
+Index           sh_get_top      (Vm_h vm);
+void            sh_set_top      (Vm_h vm, Index index);
+enum NodeType   sh_get_node_type    (Vm_h vm, Index index);
 // Get the index of a node's child
-Index           tc_get_node_child   (Vm_h vm, Index index, enum ChildSide side);
-void            tc_set_node_child   (Vm_h vm, Index index, enum ChildSide side,
+Index           sh_get_node_child   (Vm_h vm, Index index, enum ChildSide side);
+void            sh_set_node_child   (Vm_h vm, Index index, enum ChildSide side,
     Index new_child_index);
 
 // Misc
-// void            tc_compact_vm   (Vm_h vm);
-void            tc_debug_print_tree (Vm_h vm);
+// void            sh_compact_vm   (Vm_h vm);
+void            sh_debug_print_tree (Vm_h vm);
 
 #endif

@@ -2,7 +2,7 @@
 #define VM_H
 
 #include "tree.h"
-#include "../include/tceval.h"
+#include "../include/shrubble.h"
 
 enum VmState {
     VM_STATE_DONE,

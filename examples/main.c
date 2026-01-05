@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../include/tceval.h"
+#include "../include/shrubble.h"
 
 #define INDENT_SIZE 4
 
@@ -17,7 +17,7 @@ void print_indented(int amount, char* str) {
 }
 
 void print_tree(Vm_h vm, Index index, int indent_level) {
-    switch (tc_get_node_type(vm, index)) {
+    switch (sh_get_node_type(vm, index)) {
         case NODE_TYPE_LEAF: {
             printf("Leaf\n");
             break;
@@ -25,22 +25,22 @@ void print_tree(Vm_h vm, Index index, int indent_level) {
         case NODE_TYPE_STEM: {
             printf("Stem\n");
             print_indented((indent_level + 1) * INDENT_SIZE, "└ ");
-            print_tree(vm, tc_get_node_child(vm, index, CHILD_SIDE_LEFT),
+            print_tree(vm, sh_get_node_child(vm, index, CHILD_SIDE_LEFT),
                 indent_level + 1);
             break;
         }
         case NODE_TYPE_FORK:
         case NODE_TYPE_APP: {
-            if (tc_get_node_type(vm, index) == NODE_TYPE_FORK) {
+            if (sh_get_node_type(vm, index) == NODE_TYPE_FORK) {
                 printf("Fork\n");
             } else {
                 printf("App\n");
             }
             print_indented((indent_level + 1) * INDENT_SIZE, "├ ");
-            print_tree(vm, tc_get_node_child(vm, index, CHILD_SIDE_LEFT),
+            print_tree(vm, sh_get_node_child(vm, index, CHILD_SIDE_LEFT),
                 indent_level + 1);
             print_indented((indent_level + 1) * INDENT_SIZE, "└ ");
-            print_tree(vm, tc_get_node_child(vm, index, CHILD_SIDE_RIGHT),
+            print_tree(vm, sh_get_node_child(vm, index, CHILD_SIDE_RIGHT),
                 indent_level + 1);
             break;
         }
@@ -67,7 +67,7 @@ int main() {
     // First, we create a VM
     printf("> Create VM\n");
     Vm_h vm;
-    enum VmResult result = tc_make_vm(&vm, vm_default_config);
+    enum VmResult result = sh_make_vm(&vm, vm_default_config);
     if (result != VM_OK) {
         printf("Error: %d\n", result);
         exit(EXIT_FAILURE);
@@ -77,53 +77,54 @@ int main() {
     // invoke reduction rule 2
     printf("> Add nodes\n");
     Index index;
-    index = tc_leaf();
-    index = tc_add_stem(vm, index);
+    index = sh_leaf();
+    index = sh_add_stem(vm, index);
     Index stem_index = index;
-    index = tc_add_fork(vm, 0, 0);
-    tc_set_node_child(vm, index, CHILD_SIDE_LEFT, stem_index);
+    index = sh_add_fork(vm, 0, 0);
+    sh_set_node_child(vm, index, CHILD_SIDE_LEFT, stem_index);
     // A node can be referenced more than once:
-    index = tc_add_app(vm, index, index);
+    index = sh_add_app(vm, index, index);
     // After nodes are added, we must tell which one is the root of the tree
-    tc_set_top(vm, index);
+    sh_set_top(vm, index);
     // Print the tree to check if everything is correct
-    print_tree(vm, tc_get_top(vm), 0);
-    tc_debug_print_tree(vm);
+    print_tree(vm, sh_get_top(vm), 0);
+    sh_debug_print_tree(vm);
 
     // Now we save the VM to a file. In order to do this, the library asks for a
     // callback. Our callback will get a file via the context pointer, and
     // writes to the file with a given chunk size (1<<10 = 1024 bytes).
     printf("> Save VM to file\n");
-    FILE *fp = fopen("vm.img", "wb");
+    char* image_filename = "vm.shrubble";
+    FILE *fp = fopen(image_filename, "wb");
     struct UserData user_data = {"USER"};
     size_t chunk_size = 1<<10;
-    tc_write_vm(vm, &user_data, sizeof(struct UserData), chunk_size, write_vm,
+    sh_write_vm(vm, &user_data, sizeof(struct UserData), chunk_size, write_vm,
         fp);
     fclose(fp);
     // Then we null out the VM handle
-    tc_free_vm(vm);
+    sh_free_vm(vm);
     vm = NULL;
 
     // Next, we read the VM from the file we have just written to. Similarly to
     // the previous case, the library asks for a callback, but this time, we
     // read the chunks of the given size (1<<10 = 1024 bytes) from the file.
     printf("> Load VM from file\n");
-    fp = fopen("vm.img", "rb");
+    fp = fopen(image_filename, "rb");
 
     struct VmHeader header;
-    result = tc_read_vm_header(&header, chunk_size, read_vm, fp);
+    result = sh_read_vm_header(&header, chunk_size, read_vm, fp);
     if (result != VM_OK) {
         printf("Error: %d\n", result);
         exit(EXIT_FAILURE);
     }
-    result = tc_read_user_data(&header, &user_data, read_vm, fp);
+    result = sh_read_user_data(&header, &user_data, read_vm, fp);
     if (result != VM_OK) {
         printf("Error: %d\n", result);
         exit(EXIT_FAILURE);
     }
     // Here user data (e.g. language backend version) can be checked, and vm
     // data readout can be aborted if necessary
-    result = tc_read_vm_data(&header, &vm, chunk_size, read_vm, fp);
+    result = sh_read_vm_data(&header, &vm, chunk_size, read_vm, fp);
     if (result != VM_OK) {
         printf("Error: %d\n", result);
         exit(EXIT_FAILURE);
@@ -131,12 +132,12 @@ int main() {
 
     // After it is done, reduce until there's nothing more to reduce
     printf("> Run VM\n");
-    tc_run(vm);
+    sh_run(vm);
 
     // Lastly, print the resulting tree
     printf("> Query the result\n");
     // We will start from the top, so we need to query it
-    Index top = tc_get_top(vm);
+    Index top = sh_get_top(vm);
     print_tree(vm, top, 0);
-    tc_debug_print_tree(vm);
+    sh_debug_print_tree(vm);
 }
