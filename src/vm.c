@@ -337,7 +337,7 @@ static void _apply_rules(struct Tree* tree, Index top_index, Node top_node,
             }
             default: {
                 fail("PANIC! Invalid left tag during rule application: %d\n",
-                    node_get_type(left_child));
+                    node_get_type(left_of_left_child));
                 break;
             }
         }
