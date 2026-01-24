@@ -1,3 +1,6 @@
+// TODO Figure out the best partitioning of bits between a node's child indices
+// and its refcount. For this, diagnostics should be gathered
+
 #include "../include/shrubble.h"
 #include "node.h"
 #include "tree.h"
@@ -50,17 +53,6 @@ size_t sh_get_vm_size(Vm_h vm) {
     return vm_get_size(*vm);
 }
 
-static Index _sh_add_node(Vm_h vm, enum NodeType type, Index left, Index right) {
-    if (type == NODE_TYPE_LEAF) {
-        return 0;
-    }
-    Node node = node_make(type, 0, left, right);
-    Index index = tree_add_node(&vm->tree, node);
-    tree_incr_refcount(&vm->tree, left);
-    tree_incr_refcount(&vm->tree, right);
-    return index;
-}
-
 Index sh_add_app(Vm_h vm, Index left, Index right) {
     return _sh_add_node(vm, NODE_TYPE_APP, left, right);
 }
@@ -95,13 +87,7 @@ int sh_can_run(Vm_h vm) {
 }
 
 Index sh_get_top(Vm_h vm) {
-    Node current = tree_get_node(vm->tree, 0);
-    Index current_index = 0;
-    while (node_get_type(current) == NODE_TYPE_INDIR) {
-        current_index = node_get_indir(current);
-        current = tree_get_node(vm->tree, current_index);
-    }
-    return current_index;
+    return vm_get_top(*vm);
 }
 
 void sh_set_top(Vm_h vm, Index index) {
@@ -138,4 +124,17 @@ void sh_set_node_child(Vm_h vm, Index index, enum ChildSide side,
 void sh_debug_print_tree(Vm_h vm) {
     tree_debug_print(vm->tree);
     vm_spine_print(vm->spine);
+}
+
+// --- PRIVATE METHODS ---
+
+static Index _sh_add_node(Vm_h vm, enum NodeType type, Index left, Index right) {
+    if (type == NODE_TYPE_LEAF) {
+        return 0;
+    }
+    Node node = node_make(type, 0, left, right);
+    Index index = tree_add_node(&vm->tree, node);
+    tree_incr_refcount(&vm->tree, left);
+    tree_incr_refcount(&vm->tree, right);
+    return index;
 }

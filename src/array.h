@@ -22,6 +22,8 @@ Index           array_push      (struct Array* array, size_t elem_size,
                                 const void* data);
 bool_t          array_is_empty  (struct Array array);
 void*           array_pop       (struct Array* array, size_t elem_size);
+void            array_pop_many  (struct Array* array, size_t elem_size,
+    size_t elem_count);
 void*           array_peek      (struct Array array, size_t elem_size);
 void            array_unpop     (struct Array* array, size_t elem_size);
 void            array_free      (struct Array* array);
@@ -31,7 +33,8 @@ void            array_free      (struct Array* array);
 // Node vector
 struct Array    node_array_make     (size_t capacity);
 Index           node_array_push     (struct Array* array, Node node);
-void            node_array_pop      (struct Array* array);
+Node*           node_array_pop      (struct Array* array);
+void            node_array_pop_many (struct Array* array, size_t elem_count);
 Node            node_array_get      (struct Array array, Index index);
 Node*           node_array_get_ref  (struct Array array, Index index);
 void            node_array_set      (struct Array array, Index index,

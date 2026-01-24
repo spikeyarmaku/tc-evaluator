@@ -23,6 +23,7 @@ void        tree_set_node           (struct Tree tree, Index index, Node node);
 void        tree_incr_refcount      (struct Tree* tree, Index index);
 void        tree_decr_refcount      (struct Tree* tree, Index index);
 void        tree_delete_node        (struct Tree* tree, Index index);
+void        tree_delete_children    (struct Tree* tree, Index index);
 
 size_t      tree_get_node_count     (struct Tree tree);
 void        tree_print              (struct Tree tree, char* buffer,

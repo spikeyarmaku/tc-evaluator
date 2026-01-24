@@ -33,7 +33,9 @@ static void     _apply_rule_3c      (struct Tree* tree_h, Index top_index,
     Node top_node, Index left_child_index, Node left_child,
     Index right_child_index, Node right_child);
 
-static void     _vm_spine_rewind     (struct Vm* vm);
+static void     _vm_spine_rewind    (struct Vm* vm);
+static void     _vm_replace_indir   (struct Tree tree, Index node_index,
+    Node node, enum ChildSide child);
 
 // -----------------------------------------------------------------------------
 
@@ -81,6 +83,12 @@ enum VmState vm_step(struct Vm* vm) {
                 } else {
                     tree_set_node(vm->tree, top_index,
                         node_set_indir(top_node, node_get_indir(indir_node)));
+                    tree_decr_refcount(&vm->tree, indir_index);
+                    indir_node = tree_get_node(vm->tree, indir_index);
+                    if (node_get_refcount(indir_node) == 0) {
+                        tree_set_node(vm->tree, indir_index,
+                            node_set_indir(indir_node, 0));
+                    }
                 }
             } else {
                 // There's nothing that can be done when an indirection is the
@@ -183,26 +191,133 @@ enum VmState vm_step(struct Vm* vm) {
 void vm_run(struct Vm* vm) {
     enum VmState state = VM_STATE_RUNNING;
 
-    size_t counter = 0;
+    // size_t counter = 0;
     while (state == VM_STATE_RUNNING) {
         // printf("--- STEP %lu ---\n", counter);
         // tree_debug_print(vm->tree);
         // _spine_print(vm->spine);
         // tree_print_comb(vm->tree);
         state = vm_step(vm);
-        counter++;
+        // counter++;
     }
 
-    debug("%lu steps\n", counter);
+    // debug("%lu steps\n", counter);
 }
 
-// void vm_compact(struct Vm* vm) {
+void vm_spine_print(struct Array spine) {
+    printf("Spine: ");
+    size_t count = spine.size / sizeof(Index);
+    for (size_t i = 0; i < count; i++) {
+        Index index = *(Index*)array_get(spine, i, sizeof(Index));
+        printf("%lu ", index);
+    }
+    printf("\n");
+}
+
+Index vm_get_top(struct Vm vm) {
+    Node current = tree_get_node(vm.tree, 0);
+    Index current_index = 0;
+    while (node_get_type(current) == NODE_TYPE_INDIR) {
+        current_index = node_get_indir(current);
+        current = tree_get_node(vm.tree, current_index);
+    }
+    return current_index;
+}
+
+void vm_merge(struct Vm* base_vm, struct Vm new_vm) {
     // TODO
-    // Move the top non-null nodes of the node array to empty spaces
-    // Decrease refcounts of the overwritten node's children
-    // Rewrite indices pointing to these nodes in the node array
-    // Rewrite indices pointing to these nodes in the spine array
-// }
+    // Note: fn signature is not final
+    // Note: stay with absolute indices. Absolute indices optimize for execution
+    // which is the hot-path. Merging will happen rarely, so it's okay if a lot
+    // of indices have to be overwritten.
+    vm_compact(base_vm);
+    fail("NOT IMPLEMENTED! vm_merge\n");
+}
+
+void vm_compact(struct Vm* vm) {
+    // Check if there are holes in the VM. If not, there's nothing to do
+    if (vm->tree.free_space_count == 0) {
+        return;
+    }
+
+    // Otherwise, prune unused nodes in three stages:
+
+    // Stage 1: For all indirection nodes marking free space, go through all the
+    // residual tree nodes, and decrease their refcounts
+    Index first_indir_index =
+        node_array_count(vm->tree.nodes) - vm->tree.free_space_count;
+    while (node_array_count(vm->tree.nodes) > first_indir_index) {
+        Node node = *node_array_pop(&vm->tree.nodes);
+        // Decrementing free space count is unnecessary, as it will be set 0
+        // anyways
+        tree_delete_children(&vm->tree, node_get_indir(node));
+    }
+
+    // Stage 2: Initialize two cursors: c0 starts from the beginning of the
+    // list, and stops at the first free space (a node with 0 refcount), while
+    // c1 starts from the end, and stops at the first non-free node. Each time
+    // both are stopped, copy the content of c1 into c0, and then replace c1's
+    // content with an indir pointing to c0. Stop when c1 <= c0
+    Index c0 = 1;
+    Index c1 = first_indir_index - 1;
+    while (c0 < c1) {
+        while (node_get_refcount(tree_get_node(vm->tree, c0)) > 0) {
+            c0++;
+        }
+        while (node_get_refcount(tree_get_node(vm->tree, c1)) == 0) {
+            c1--;
+        }
+        if (c0 < c1) {
+            // Copy content
+            Node c1_node = tree_get_node(vm->tree, c1);
+            tree_set_node(vm->tree, c0, c1_node);
+            // Replace node with indirection
+            tree_set_node(vm->tree, c1, node_set_indir(c1_node, c0));
+            c0++;
+            c1--;
+        }
+    }
+
+    // Stage 3: Go through all nodes, and if they point to an indir, replace the
+    // pointed index to the new address
+    c0 = 0;
+    while (c0 <= c1) {
+        Node node = tree_get_node(vm->tree, c0);
+        switch (node_get_type(node)) {
+            case NODE_TYPE_CUSTOM: {
+                // TODO
+                fail("NOT IMPLEMENTED! vm_compact - custom node\n");
+                break;
+            }
+            case NODE_TYPE_INDIR:
+                // The top node is indir, so it has to be dealt with
+            case NODE_TYPE_STEM: {
+                _vm_replace_indir(vm->tree, c0, node, CHILD_SINGLE);
+                break;
+            }
+            case NODE_TYPE_FORK:
+            case NODE_TYPE_APP: {
+                _vm_replace_indir(vm->tree, c0, node, CHILD_SIDE_LEFT);
+                _vm_replace_indir(vm->tree, c0, node, CHILD_SIDE_RIGHT);
+                break;
+            }
+            case NODE_TYPE_LEAF: {
+                fail("PANIC! Reached unreachable code: vm_compact - leaf\n");
+                break;
+            }
+            default: {
+                fail("PANIC! vm_compact: invalid node type: %d\n",
+                    node_get_type(node));
+                break;
+            }
+        }
+        c0++;
+    }
+
+    // Cleanup
+    vm->tree.free_space_count = 0;
+    node_array_pop_many(&vm->tree.nodes, first_indir_index - c1 - 1);
+}
 
 size_t vm_get_size(struct Vm vm) {
     return vm.tree.nodes.size;
@@ -491,16 +606,6 @@ static void _apply_rule_3c(struct Tree* tree_h, Index top_index, Node top_node,
     tree_incr_refcount(tree_h, node_v_index);
 }
 
-void vm_spine_print(struct Array spine) {
-    printf("Spine: ");
-    size_t count = spine.size / sizeof(Index);
-    for (size_t i = 0; i < count; i++) {
-        Index index = *(Index*)array_get(spine, i, sizeof(Index));
-        printf("%lu ", index);
-    }
-    printf("\n");
-}
-
 // --- PRIVATE METHODS ---
 static void _vm_spine_rewind(struct Vm* vm) {
     bool_t error = FALSE;
@@ -508,4 +613,20 @@ static void _vm_spine_rewind(struct Vm* vm) {
         spine_array_pop(&vm->spine, &error);
     }
     spine_array_push(&vm->spine, 0);
+}
+
+static void _vm_replace_indir(struct Tree tree, Index node_index, Node node,
+    enum ChildSide child)
+{
+    Index child_index = node_get_child(node, child);
+    if (child_index == 0) {
+        return;
+    }
+    Node child_node = tree_get_node(tree, child_index);
+    if (node_get_type(child_node) == NODE_TYPE_INDIR)
+    {
+        Index new_child_index = node_get_indir(child_node);
+        tree_set_node(tree, node_index,
+            node_set_child(node, child, new_child_index));
+    }
 }

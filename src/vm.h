@@ -4,11 +4,6 @@
 #include "tree.h"
 #include "../include/shrubble.h"
 
-enum VmState {
-    VM_STATE_DONE,
-    VM_STATE_RUNNING
-};
-
 struct Vm {
     struct Tree tree; // Node array
     struct Array spine; // Index array
@@ -20,9 +15,11 @@ struct Vm       vm_make         (struct VmConfig config);
 void            vm_free         (struct Vm* vm);
 enum VmState    vm_step         (struct Vm* vm);
 void            vm_run          (struct Vm* vm);
-// void            vm_compact      (struct Vm* vm);
+void            vm_compact      (struct Vm* vm);
 size_t          vm_get_size     (struct Vm vm);
 void            vm_spine_print  (struct Array spine);
+Index           vm_get_top      (struct Vm vm);
+void            vm_merge        (struct Vm* base_vm, struct Vm new_vm);
 
 // Serialize / deserialize
 void            vm_write            (struct Vm vm, void* user_data,

@@ -43,6 +43,11 @@ enum VmResult {
     VM_ERR_INTERNAL
 };
 
+enum VmState {
+    VM_STATE_DONE,
+    VM_STATE_RUNNING
+};
+
 enum ChildSide {
     CHILD_SIDE_LEFT,
     CHILD_SIDE_RIGHT,

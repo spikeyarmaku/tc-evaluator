@@ -6,7 +6,6 @@
 #include "node.h"
 
 static void _tree_mark_empty(struct Tree* tree, Index index);
-static void _tree_delete_children(struct Tree* tree, Index index);
 static void _tree_print_subtree(struct Tree tree, char* buffer,
     bool_t use_spaces, Index index, bool_t root);
 static void _tree_print_comb_subtree(struct Tree tree, Index index,
@@ -42,7 +41,7 @@ Index tree_add_node(struct Tree* tree, Node node) {
     }
 
     if (new_node_index != 0) {
-        _tree_delete_children(tree, new_node_index);
+        tree_delete_children(tree, new_node_index);
         node_array_set(tree->nodes, new_node_index, node);
         tree->free_space_count--;
     } else {
@@ -153,14 +152,7 @@ void tree_delete_node(struct Tree* tree, Index index) {
     _tree_mark_empty(tree, index);
 }
 
-// ----------------------------- INTERNAL METHODS -----------------------------
-
-static void _tree_mark_empty(struct Tree* tree, Index index) {
-    tree->free_space_count++;
-    node_array_push(&tree->nodes, node_make(NODE_TYPE_INDIR, 0, 0, index));
-}
-
-static void _tree_delete_children(struct Tree* tree, Index index) {
+void tree_delete_children(struct Tree* tree, Index index) {
     Node node = tree_get_node(*tree, index);
     switch (node_get_type(node)) {
         case NODE_TYPE_STEM: {
@@ -177,6 +169,13 @@ static void _tree_delete_children(struct Tree* tree, Index index) {
             break;
         }
     }
+}
+
+// ----------------------------- INTERNAL METHODS -----------------------------
+
+static void _tree_mark_empty(struct Tree* tree, Index index) {
+    tree->free_space_count++;
+    node_array_push(&tree->nodes, node_make(NODE_TYPE_INDIR, 0, 0, index));
 }
 
 static void _tree_print_subtree(struct Tree tree, char* buffer,

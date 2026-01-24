@@ -56,6 +56,10 @@ void* array_pop(struct Array* array, size_t elem_size) {
     return (uint8_t*)array->data + array->size;
 }
 
+void array_pop_many(struct Array* array, size_t elem_size, size_t elem_count) {
+    array->size -= (elem_size * elem_count);
+}
+
 void* array_peek(struct Array array, size_t elem_size) {
     if (array_is_empty(array) == TRUE) {
         return NULL;
@@ -82,8 +86,12 @@ Index node_array_push(struct Array* array, Node node) {
     return array_push(array, sizeof(Node), &node);
 }
 
-void node_array_pop(struct Array* array) {
-    array_pop(array, sizeof(Node));
+Node* node_array_pop(struct Array* array) {
+    return (Node*)array_pop(array, sizeof(Node));
+}
+
+void node_array_pop_many(struct Array* array, size_t elem_count) {
+    array_pop_many(array, sizeof(Node), elem_count);
 }
 
 Node node_array_get(struct Array array, Index index) {
