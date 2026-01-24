@@ -208,6 +208,7 @@ uint64_t get_tree_size(struct Tree tree, Index index) {
 }
 
 void test_vm_operations() {
+    // VM compact
     struct Vm vm = vm_parse("(t (t (t (t (t t (t (t t t)))) (t (t (t t (t t))) (t (t (t t (t t))) (t t))))) (t (t (t t)) t)) (t t (t (t t) t))");
     vm_run(&vm);
 
@@ -217,6 +218,28 @@ void test_vm_operations() {
     printf("VM tree size after compaction: %lu\n", get_tree_size(vm.tree, 0));
     check("VM compact - tree size",
         (get_tree_size(vm.tree, 0) == size) && vm.tree.free_space_count == 0);
+
+    // VM merge
+    struct Vm new_vm = vm_parse("(t (t (t (t (t t (t (t t t)))) (t (t (t t (t t))) (t (t (t t (t t))) (t t))))) (t (t (t t)) t)) (t t (t (t t) t))");
+    vm_run(&new_vm);
+    printf("...vm\n");
+    tree_debug_print(vm.tree);
+    printf("...new vm\n");
+    tree_debug_print(new_vm.tree);
+    vm_merge(&vm, &new_vm);
+    printf("...merged\n");
+    tree_debug_print(vm.tree);
+    check("VM merge - tree size", get_tree_size(vm.tree, 0) == size * 2);
+    vm_run(&vm);
+    // This specific example should return (t t (t (t t) t))
+    check("Run VM after merge - tree size", get_tree_size(vm.tree, 0) == 6);
+
+    tree_debug_print(vm.tree);
+    printf("VM size: %lu\n", get_tree_size(vm.tree, 0));
+    vm_merge(&vm, &vm);
+    tree_debug_print(vm.tree);
+    printf("VM size: %lu\n", get_tree_size(vm.tree, 0));
+    check("VM self-merge - tree size", get_tree_size(vm.tree, 0) == 12);
 }
 
 void test() {

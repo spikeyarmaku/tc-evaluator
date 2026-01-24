@@ -19,7 +19,7 @@ void            vm_compact      (struct Vm* vm);
 size_t          vm_get_size     (struct Vm vm);
 void            vm_spine_print  (struct Array spine);
 Index           vm_get_top      (struct Vm vm);
-void            vm_merge        (struct Vm* base_vm, struct Vm new_vm);
+void            vm_merge        (struct Vm* base_vm, struct Vm* new_vm);
 
 // Serialize / deserialize
 void            vm_write            (struct Vm vm, void* user_data,

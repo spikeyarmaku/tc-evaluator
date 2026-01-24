@@ -224,14 +224,88 @@ Index vm_get_top(struct Vm vm) {
     return current_index;
 }
 
-void vm_merge(struct Vm* base_vm, struct Vm new_vm) {
-    // TODO
-    // Note: fn signature is not final
-    // Note: stay with absolute indices. Absolute indices optimize for execution
-    // which is the hot-path. Merging will happen rarely, so it's okay if a lot
-    // of indices have to be overwritten.
+// Apply the top node of the new VM to the top node of the base VM
+// Note: merging a VM to itself should (and seems to) work, but no guarantees
+void vm_merge(struct Vm* base_vm, struct Vm* new_vm) {
+    // Note: one would be tempted to use relative indices in the node stack, to
+    // make merging VMs easier. However, this would be a mistake: absolute
+    // indices optimize for execution, which is the hot-path. Merging will
+    // happen rarely, so it's okay if a lot of indices have to be overwritten.
+
+    // Compact the base VM
     vm_compact(base_vm);
-    fail("NOT IMPLEMENTED! vm_merge\n");
+
+    // Add an app node with the two top nodes as children, and calculate the
+    // offset
+    Index base_top_index = vm_get_top(*base_vm);
+    Index new_top_index = vm_get_top(*new_vm);
+    // We can calculate the offset here, before adding the new top node, because
+    // the new node will take the place of the new VM's node at index 0, so it
+    // won't increase the total node count
+    Index offset = tree_get_node_count(base_vm->tree);
+    Index app_top_index = tree_add_node(&base_vm->tree,
+        node_make(NODE_TYPE_APP, 1, base_top_index, new_top_index + offset));
+    tree_set_node(base_vm->tree, 0,
+        node_make(NODE_TYPE_INDIR, 1, 0, app_top_index));
+
+    // Check if the new VM has more than a single node
+    if (new_top_index != 0) {
+        // Copy all nodes from the new VM to the old one, and update the indices
+        // with the offset
+        size_t new_vm_node_count = tree_get_node_count(new_vm->tree);
+        for (Index i = 1; i < new_vm_node_count; i++) {
+            Node node = tree_get_node(new_vm->tree, i);
+            switch (node_get_type(node)) {
+                case NODE_TYPE_CUSTOM: {
+                    fail("NOT IMPLEMENTED! vm_merge - custom node\n");
+                    break;
+                }
+                case NODE_TYPE_STEM: {
+                    Index index = node_get_child(node, CHILD_SINGLE);
+                    if (index != 0) {
+                        node = node_set_child(node,
+                            CHILD_SINGLE, index + offset);
+                    }
+                    break;
+                }
+                case NODE_TYPE_INDIR: {
+                    Index index = node_get_indir(node);
+                    if (index != 0) {
+                        node = node_set_indir(node, index + offset);
+                    }
+                    break;
+                }
+                case NODE_TYPE_FORK:
+                case NODE_TYPE_APP: {
+                    Index left = node_get_child(node, CHILD_SIDE_LEFT);
+                    if (left != 0) {
+                        node = node_set_child(node,
+                            CHILD_SIDE_LEFT, left + offset);
+                    }
+                    Index right = node_get_child(node, CHILD_SIDE_RIGHT);
+                    if (right != 0) {
+                        node = node_set_child(node,
+                            CHILD_SIDE_RIGHT, right + offset);
+                    }
+                    break;
+                }
+                case NODE_TYPE_LEAF: {
+                    break;
+                }
+                default: {
+                    fail("PANIC! vm_merge - invalid node type %d\n",
+                        node_get_type(node));
+                    break;
+                }
+            }
+            tree_add_node(&base_vm->tree, node);
+        }
+    }
+
+    if (base_vm != new_vm) {
+        base_vm->tree.free_space_count = new_vm->tree.free_space_count;
+        vm_free(new_vm);
+    }
 }
 
 void vm_compact(struct Vm* vm) {
@@ -319,6 +393,7 @@ void vm_compact(struct Vm* vm) {
     node_array_pop_many(&vm->tree.nodes, first_indir_index - c1 - 1);
 }
 
+// Return VM size in bytes
 size_t vm_get_size(struct Vm vm) {
     return vm.tree.nodes.size;
 }

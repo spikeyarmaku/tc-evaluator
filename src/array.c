@@ -38,7 +38,6 @@ Index array_push(struct Array* array, size_t elem_size, const void* data)
 
     Index result = array->size / elem_size;
     array_set(*array, result, elem_size, data);
-    // memcpy((uint8_t*)array->data + array->size, data, elem_size);
     array->size += elem_size;
 
     return result;
