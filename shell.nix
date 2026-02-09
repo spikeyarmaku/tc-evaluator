@@ -1,21 +1,18 @@
 { pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
-  buildInputs = [
+  buildInputs = with pkgs; [
     # gcc
-    pkgs.gcc
-    pkgs.gdb
-    # pkgs.glibc
+    gcc
+    gdb
+    # glibc
 
-    # haskell
-    pkgs.ghc
-    pkgs.haskell-language-server
-    pkgs.cabal-install
+    valgrind
+    kdePackages.kcachegrind
 
-    pkgs.valgrind
-    pkgs.libsForQt5.kcachegrind
-
-    pkgs.clang
-    pkgs.cmake
+    clang
+    cmake
   ];
+
+  shellHook = "tmux attach || tmux new";
 }
