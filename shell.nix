@@ -13,6 +13,4 @@ pkgs.mkShell {
     clang
     cmake
   ];
-
-  shellHook = "tmux attach || tmux new";
 }
